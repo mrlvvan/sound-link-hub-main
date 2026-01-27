@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* Professional dark theme - Apple Music / SoundCloud inspired */
+    --background: 240 10% 3%;
+    --foreground: 0 0% 98%;
+
+    --card: 240 10% 10%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 240 10% 10%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 270 60% 55%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 270 60% 65%;
+
+    --secondary: 240 8% 14%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 8% 14%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 25 95% 55%;
+    --accent-foreground: 0 0% 100%;
+    --accent-glow: 25 95% 65%;
+
+    --info: 200 90% 60%;
+    --info-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 10% 18%;
+    --input: 240 8% 14%;
+    --ring: 270 60% 55%;
+
+    --radius: 0.75rem;
+
+    /* Refined gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(270 60% 50%), hsl(270 60% 60%));
+    --gradient-accent: linear-gradient(135deg, hsl(25 95% 50%), hsl(25 95% 60%));
+    --gradient-card: linear-gradient(180deg, hsl(240 10% 11%), hsl(240 10% 10%));
+
+    /* Professional shadows */
+    --shadow-sm: 0 1px 3px hsl(0 0% 0% / 0.3);
+    --shadow-md: 0 2px 8px hsl(0 0% 0% / 0.4);
+    --shadow-lg: 0 4px 16px hsl(0 0% 0% / 0.5);
+    --shadow-neon: 0 0 24px hsl(270 60% 55% / 0.4);
+    --shadow-accent: 0 0 24px hsl(25 95% 55% / 0.4);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", Arial, sans-serif;
+    font-weight: 400;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-weight: 600;
+    line-height: 1.2;
+    letter-spacing: -0.01em;
+  }
+
+  h1 { font-size: 2rem; font-weight: 700; }
+  h2 { font-size: 1.5rem; }
+  h3 { font-size: 1.25rem; }
+
+  /* Desktop typography improvements */
+  @media (min-width: 1024px) {
+    h1 { font-size: 2.5rem; }
+    h2 { font-size: 1.75rem; }
+    h3 { font-size: 1.5rem; }
+  }
+
+  /* Smooth spring-like transitions */
+  * {
+    transition: background-color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                color 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
+

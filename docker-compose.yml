@@ -1,0 +1,30 @@
+services:
+  sound-link-hub:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sound-link-hub
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    networks:
+      - sound-link-network
+
+  # Режим разработки (раскомментируйте для использования)
+  # sound-link-hub-dev:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile.dev
+  #   container_name: sound-link-hub-dev
+  #   ports:
+  #     - "8080:8080"
+  #   volumes:
+  #     - .:/app
+  #     - /app/node_modules
+  #   restart: unless-stopped
+  #   networks:
+  #     - sound-link-network
+
+networks:
+  sound-link-network:
+    driver: bridge

@@ -1,0 +1,20 @@
+# Dockerfile для режима разработки
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Копирование файлов зависимостей
+COPY package*.json ./
+COPY bun.lockb ./
+
+# Установка зависимостей
+RUN npm install
+
+# Копирование исходного кода
+COPY . .
+
+# Открытие порта для dev-сервера
+EXPOSE 8080
+
+# Запуск dev-сервера
+CMD ["npm", "run", "dev"]
