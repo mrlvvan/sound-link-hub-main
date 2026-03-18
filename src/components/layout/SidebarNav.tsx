@@ -1,6 +1,9 @@
 import { Home, Search, Package, Mic2, User, PlayCircle } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
   { icon: Home, label: "Главная", path: "/" },
@@ -11,6 +14,8 @@ const navItems = [
 ];
 
 export const SidebarNav = () => {
+  const { profile, user } = useAuth();
+
   return (
     <aside className="hidden lg:flex fixed left-0 top-0 bottom-0 w-64 bg-card/95 backdrop-blur-lg border-r border-border z-40 flex-col">
       {/* Logo */}
@@ -53,7 +58,22 @@ export const SidebarNav = () => {
       </nav>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-border space-y-3">
+        <ThemeToggle />
+        {user && (
+          <div className="flex items-center gap-2 px-2 py-1.5 rounded-lg bg-secondary/50">
+            <Avatar className="w-8 h-8">
+              <AvatarImage src={profile?.avatar_url ?? undefined} />
+              <AvatarFallback className="text-xs bg-primary/20">
+                {String(profile?.display_name || profile?.username || user?.email || "U").slice(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate">{profile?.display_name || profile?.username || "Вы"}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{profile?.username ? `@${profile.username}` : user?.email}</p>
+            </div>
+          </div>
+        )}
         <div className="text-xs text-muted-foreground text-center">
           © 2025 SoundLinker
         </div>

@@ -2,7 +2,6 @@ import { useNavigate } from "react-router-dom";
 import { Calendar, MapPin, Clock, MessageCircle } from "lucide-react";
 import { formatPrice } from "@/lib/formatPrice";
 import { Button } from "@/components/ui/button";
-import { openTelegramChat } from "@/lib/telegramUtils";
 
 interface BookingCardProps {
   id: number;
@@ -106,7 +105,7 @@ export const BookingCard = ({
           className="w-full border-primary/30 hover:border-primary hover:bg-primary/10"
           onClick={(e) => {
             e.stopPropagation();
-            openTelegramChat(ownerUsername);
+            navigate(`/bookings/${id}`);
           }}
         >
           <MessageCircle className="w-4 h-4 mr-2" />

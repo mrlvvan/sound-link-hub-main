@@ -5,7 +5,6 @@ import { formatPrice } from "@/lib/formatPrice";
 import { Star, Clock, Calendar } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { CreateBookingDialog } from "./CreateBookingDialog";
-import { openTelegramChat } from "@/lib/telegramUtils";
 
 interface StudioBookingCardProps {
   studioName: string;
@@ -16,6 +15,8 @@ interface StudioBookingCardProps {
   pricePerSession?: number;
   rating: number;
   reviewsCount: number;
+  requiresPrepayment?: boolean;
+  prepaymentPercent?: number;
 }
 
 export const StudioBookingCard = ({
@@ -26,7 +27,9 @@ export const StudioBookingCard = ({
   pricePerMonth,
   pricePerSession,
   rating,
-  reviewsCount
+  reviewsCount,
+  requiresPrepayment = false,
+  prepaymentPercent = 50
 }: StudioBookingCardProps) => {
   return (
     <Card className="p-6 shadow-lg border-border sticky top-20">
@@ -91,22 +94,16 @@ export const StudioBookingCard = ({
         pricePerHour={pricePerHour}
         pricePerDay={pricePerDay}
         pricePerSession={pricePerSession}
+        requiresPrepayment={requiresPrepayment}
+        prepaymentPercent={prepaymentPercent}
       >
         <Button className="w-full h-12 text-base bg-gradient-primary hover:shadow-neon mb-3">
           Забронировать
         </Button>
       </CreateBookingDialog>
       
-      <Button 
-        variant="outline" 
-        className="w-full h-12"
-        onClick={() => openTelegramChat(ownerUsername)}
-      >
-        Связаться с владельцем
-      </Button>
-
       <p className="text-xs text-center text-muted-foreground mt-4">
-        Вы еще ничего не оплачиваете
+        П2П: переводы напрямую владельцу. Платформа — гарант.
       </p>
 
       <Separator className="my-4" />

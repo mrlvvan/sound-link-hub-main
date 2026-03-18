@@ -67,7 +67,9 @@ const StudioDetail = () => {
         photos: []
       }
     ],
-    gradient: "bg-gradient-to-br from-violet-600 to-indigo-600"
+    gradient: "bg-gradient-to-br from-violet-600 to-indigo-600",
+    requiresPrepayment: true,
+    prepaymentPercent: 50
   };
 
   return (
@@ -201,13 +203,15 @@ const StudioDetail = () => {
           {/* Sidebar - Booking Card */}
           <div className="lg:col-span-1">
             <div className="lg:sticky lg:top-20">
-              <StudioBookingCard 
+              <StudioBookingCard
                 studioName={studio.name}
                 ownerUsername="studio_owner"
                 pricePerHour={studio.pricePerHour}
                 pricePerDay={studio.pricePerDay}
                 rating={studio.rating}
                 reviewsCount={studio.reviewsCount}
+                requiresPrepayment={studio.requiresPrepayment}
+                prepaymentPercent={studio.prepaymentPercent}
               />
             </div>
           </div>

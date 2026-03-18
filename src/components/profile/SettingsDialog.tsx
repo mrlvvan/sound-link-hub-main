@@ -1,4 +1,5 @@
-import { Shield, Palette, Globe, CreditCard, Bell, Info, ArrowLeft } from "lucide-react";
+import { Shield, Palette, Globe, CreditCard, Bell, Info, ArrowLeft, LogOut } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
@@ -7,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 
 interface SettingsDialogProps {
@@ -15,6 +17,8 @@ interface SettingsDialogProps {
 }
 
 export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const {
     messagesAccess,
     theme,
@@ -145,15 +149,8 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
             
             <div className="space-y-3 pl-8">
               <div>
-                <p className="text-sm mb-2">Способ получения оплаты</p>
-                <Tabs value={paymentMethod} onValueChange={(value: any) => setPaymentMethod(value)} className="w-full">
-                  <TabsList className="w-full grid grid-cols-2">
-                    <TabsTrigger value="sbp" className="text-xs">СБП</TabsTrigger>
-                    <TabsTrigger value="card" className="text-xs">Карта</TabsTrigger>
-                  </TabsList>
-                </Tabs>
+                <p className="text-sm mb-2">Реквизиты для получения (П2П)</p>
               </div>
-
               <div>
                 <p className="text-sm mb-2">Банк</p>
                 <Select value={paymentBank} onValueChange={setPaymentBank}>
@@ -174,18 +171,16 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
               </div>
 
               <div>
-                <p className="text-sm mb-2">
-                  {paymentMethod === 'sbp' ? 'Номер телефона' : 'Номер карты'}
-                </p>
+                <p className="text-sm mb-2">Номер карты для перевода</p>
                 <Input
                   type="text"
-                  placeholder={paymentMethod === 'sbp' ? '+7 (___) ___-__-__' : '0000 0000 0000 0000'}
+                  placeholder="0000 0000 0000 0000"
                   value={paymentDetails}
                   onChange={(e) => setPaymentDetails(e.target.value)}
                   className="h-9"
                 />
                 <p className="text-xs text-muted-foreground mt-1">
-                  Используется для получения оплаты за услуги
+                  Пользователи переводят вам напрямую (П2П)
                 </p>
               </div>
 
@@ -231,6 +226,30 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
                   disabled={!notificationsEnabled}
                 />
               </div>
+            </div>
+          </div>
+
+          <Separator />
+
+          {/* Account Section */}
+          <div className="py-3">
+            <div className="flex items-center gap-3 mb-3">
+              <LogOut className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
+              <h3 className="font-medium">Аккаунт</h3>
+            </div>
+            <div className="pl-8">
+              <Button
+                variant="outline"
+                className="w-full border-destructive/30 hover:bg-destructive/10 text-destructive"
+                onClick={async () => {
+                  await signOut();
+                  onOpenChange(false);
+                  navigate("/login");
+                }}
+              >
+                <LogOut className="w-4 h-4 mr-2" />
+                Выйти
+              </Button>
             </div>
           </div>
 

@@ -2,10 +2,9 @@ import { Clock, CheckCircle, AlertCircle, MessageCircle, Calendar } from "lucide
 import { formatPrice } from "@/lib/formatPrice";
 import { Button } from "@/components/ui/button";
 import { useNavigate } from "react-router-dom";
-import { openTelegramChat } from "@/lib/telegramUtils";
 
 interface OrderCardProps {
-  id: number;
+  id: number | string;
   service: string;
   username: string;
   status: "pending" | "in_progress" | "review" | "completed" | "cancelled";
@@ -123,7 +122,7 @@ export const OrderCard = ({
           className="flex-1 border-primary/30 hover:border-primary hover:bg-primary/10"
           onClick={(e) => {
             e.stopPropagation();
-            openTelegramChat(username);
+            navigate(`/orders/${id}`);
           }}
         >
           <MessageCircle className="w-4 h-4 mr-2" />

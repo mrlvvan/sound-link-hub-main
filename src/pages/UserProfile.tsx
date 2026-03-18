@@ -26,7 +26,7 @@ const mockUsers: Record<string, any> = {
       { id: "3", username: "user3", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=User3" },
     ],
     mutualFollowersCount: 12,
-    socialLinks: { instagram: "https://instagram.com", twitter: "https://twitter.com", telegram: "https://t.me" },
+    socialLinks: { instagram: "https://instagram.com", twitter: "https://twitter.com" },
   },
   singer_maria: {
     username: "singer_maria",
@@ -54,7 +54,7 @@ const mockUsers: Record<string, any> = {
     ],
     mutualFollowers: [],
     mutualFollowersCount: 0,
-    socialLinks: { instagram: "https://instagram.com", twitter: "https://twitter.com", telegram: "https://t.me" },
+    socialLinks: { instagram: "https://instagram.com", twitter: "https://twitter.com" },
   },
   trapmaster: {
     username: "trapmaster",
@@ -72,7 +72,7 @@ const mockUsers: Record<string, any> = {
       { id: "2", username: "user2", avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=User2" },
     ],
     mutualFollowersCount: 8,
-    socialLinks: { instagram: "https://instagram.com", telegram: "https://t.me" },
+    socialLinks: { instagram: "https://instagram.com" },
   },
   beatmaster: {
     username: "beatmaster",
@@ -83,7 +83,7 @@ const mockUsers: Record<string, any> = {
     stats: { followers: 14200, following: 450, tracks: 189, rating: 5.0, ordersCompleted: 345 },
     badges: [{ label: "Verified", variant: "verified" as const }],
     mutualFollowersCount: 3,
-    socialLinks: { twitter: "https://twitter.com", telegram: "https://t.me" },
+    socialLinks: { twitter: "https://twitter.com" },
   },
 };
 

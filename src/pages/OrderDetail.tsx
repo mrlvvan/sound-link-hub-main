@@ -7,17 +7,45 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { formatPrice } from "@/lib/formatPrice";
-import { openTelegramChat } from "@/lib/telegramUtils";
+import { EntityChat } from "@/components/chat/EntityChat";
 
 const OrderDetail = () => {
   const { orderId } = useParams();
   const { safeAreaTopInset, isFullscreen } = useSettingsStore();
+  const isDemo = orderId === "demo";
 
   // Mock order data
   type OrderStatus = "pending" | "in_progress" | "review" | "completed" | "cancelled";
   
-  const order: {
+  type OrderType = "custom" | "ready_beat";
+
+  const demoOrder = {
+    id: "demo",
+    orderType: "custom" as OrderType,
+    service: "Демо-заказ (проверка чата)",
+    description: "Это демонстрационный заказ для проверки работы чата. Вы можете писать сообщения без авторизации.",
+    category: "Демо",
+    status: "in_progress" as OrderStatus,
+    createdAt: "Сейчас",
+    deadline: "—",
+    price: 0,
+    platformFee: 0,
+    total: 0,
+    client: { username: "you", name: "Вы", avatar: "", rating: 5 },
+    provider: { username: "soundlinker", name: "SoundLinker", avatar: "", rating: 5 },
+    fundsStatus: "none",
+    timeline: [
+      { status: "created", label: "Заказ создан", date: "Сейчас", completed: true },
+      { status: "payment", label: "Оплата получена", date: null, completed: false },
+      { status: "in_progress", label: "В работе", date: null, completed: false },
+      { status: "review", label: "На проверке", date: null, completed: false },
+      { status: "completed", label: "Завершено", date: null, completed: false },
+    ],
+  };
+
+  const defaultOrder: {
     id: number;
+    orderType: OrderType;
     service: string;
     description: string;
     category: string;
@@ -31,8 +59,10 @@ const OrderDetail = () => {
     provider: { username: string; name: string; avatar: string; rating: number };
     fundsStatus: string;
     timeline: Array<{ status: string; label: string; date: string | null; completed: boolean }>;
+    readyBeatTimeline?: Array<{ status: string; label: string; date: string | null; completed: boolean }>;
   } = {
-    id: Number(orderId),
+    id: isDemo ? 0 : Number(orderId),
+    orderType: "custom",
     service: "Trap бит production",
     description: "Нужен trap бит в стиле Southside, с тяжелыми 808, crispy hi-hats и мрачной атмосферой. Желательно использовать синтезаторы типа Omnisphere. BPM около 140-145. Длительность 2:30-3:00 минуты. Нужен stems для дальнейшего сведения.",
     category: "Битмейкинг",
@@ -60,10 +90,39 @@ const OrderDetail = () => {
       { status: "payment", label: "Оплата получена", date: "15 окт, 14:32", completed: true },
       { status: "in_progress", label: "Работа начата", date: "15 окт, 18:00", completed: true },
       { status: "review", label: "На проверке", date: null, completed: false },
-      { status: "completed", label: "Завершено", date: null, completed: false }
-    ]
+      { status: "completed", label: "Завершено", date: null, completed: false },
+    ],
+    readyBeatTimeline: [
+      { status: "transfer", label: "Оформлен перевод", date: null, completed: false },
+      { status: "buyer_confirm", label: "Покупатель подтвердил оплату", date: null, completed: false },
+      { status: "seller_confirm", label: "Продавец подтвердил получение", date: null, completed: false },
+      { status: "delivered", label: "Бит передан покупателю", date: null, completed: false },
+    ],
   };
 
+  const isReadyBeat = orderId === "ready-beat";
+
+  const readyBeatOrder = {
+    ...defaultOrder,
+    id: 0,
+    orderType: "ready_beat" as OrderType,
+    service: "Готовый бит — Dark Drill",
+    description: "Покупка готового бита. Сначала оформляется перевод, затем обе стороны подтверждают оплату/получение, после чего бит передаётся покупателю.",
+    category: "Готовый бит",
+    client: { username: "you", name: "Вы", avatar: "", rating: 5 },
+    provider: { username: "drillking", name: "DrillKing", avatar: "", rating: 4.9 },
+    price: 5000,
+    platformFee: 500,
+    total: 5500,
+    readyBeatTimeline: [
+      { status: "transfer", label: "Оформлен перевод", date: "16 окт, 10:00", completed: true },
+      { status: "buyer_confirm", label: "Покупатель подтвердил оплату", date: null, completed: false },
+      { status: "seller_confirm", label: "Продавец подтвердил получение", date: null, completed: false },
+      { status: "delivered", label: "Бит передан покупателю", date: null, completed: false },
+    ],
+  };
+
+  const order = isDemo ? demoOrder : (isReadyBeat ? readyBeatOrder : defaultOrder);
   const isClient = true; // Mock: current user is client
 
   const getStatusConfig = (status: string) => {
@@ -100,7 +159,7 @@ const OrderDetail = () => {
               <ArrowLeft className="w-5 h-5" />
             </Button>
           </Link>
-          <h1 className="ml-2 font-semibold text-base">Детали заказа #{order.id}</h1>
+          <h1 className="ml-2 font-semibold text-base">Детали заказа {isDemo ? "Демо" : `#${order.id}`}</h1>
         </div>
       </div>
 
@@ -122,14 +181,14 @@ const OrderDetail = () => {
 
           <Separator className="my-3" />
 
-          {/* Funds Status */}
-          {order.fundsStatus === "frozen" && (
+          {/* P2P Info */}
+          {order.fundsStatus !== "none" && (
             <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-3">
               <p className="text-xs font-medium flex items-center gap-2">
-                💰 Средства заморожены на платформе
+                🤝 П2П: платформа — гарант сделки
               </p>
               <p className="text-[11px] text-muted-foreground mt-1">
-                Деньги будут переведены исполнителю после принятия работы
+                Переводы напрямую между сторонами. Реквизиты в чате.
               </p>
             </div>
           )}
@@ -205,30 +264,34 @@ const OrderDetail = () => {
                 <p className="text-xs text-muted-foreground">⭐ {otherUser.rating}</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => openTelegramChat(otherUser.username)}
-              className="border-primary/30 hover:border-primary hover:bg-primary/10 text-xs shrink-0"
-            >
-              <MessageCircle className="w-3.5 h-3.5 mr-1.5" />
-              Открыть чат
-            </Button>
           </div>
+        </Card>
+
+        {/* Чат по заказу */}
+        <Card className="p-4">
+          <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm">
+            <MessageCircle className="w-4 h-4" />
+            Чат по заказу
+          </h3>
+          <EntityChat entityType="order" entityId={orderId ?? ""} demo={orderId === "demo"} />
         </Card>
 
         {/* Timeline */}
         <Card className="p-4">
-          <h3 className="font-semibold mb-3 text-sm">История заказа</h3>
+          <h3 className="font-semibold mb-3 text-sm">
+            {order.orderType === "ready_beat" ? "Этапы сделки (готовый бит)" : "История заказа"}
+          </h3>
           <div className="space-y-3">
-            {order.timeline.map((item, index) => (
+            {(() => {
+              const timelineItems = order.orderType === "ready_beat" && order.readyBeatTimeline ? order.readyBeatTimeline : order.timeline;
+              return timelineItems.map((item, index) => (
               <div key={item.status} className={`flex gap-2.5 relative ${item.date ? 'items-start' : 'items-center'}`}>
                 {/* Vertical line connecting timeline items */}
-                {index < order.timeline.length - 1 && (
+                {index < timelineItems.length - 1 && (
                   <div 
                     className="absolute left-[13px] top-7 bottom-0 w-[2px] -mb-3"
                     style={{ 
-                      background: order.timeline[index + 1].completed 
+                      background: timelineItems[index + 1].completed 
                         ? 'hsl(var(--primary))' 
                         : 'hsl(var(--border))'
                     }}
@@ -253,7 +316,8 @@ const OrderDetail = () => {
                   )}
                 </div>
               </div>
-            ))}
+            ));
+            })()}
           </div>
         </Card>
 

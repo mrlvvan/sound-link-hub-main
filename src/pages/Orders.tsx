@@ -7,6 +7,24 @@ const Orders = () => {
   const myOrders = {
     active: [
       {
+        id: "demo",
+        service: "Демо-заказ (проверка чата)",
+        provider: "soundlinker",
+        status: "in_progress" as const,
+        deadline: "Для демонстрации",
+        price: 0,
+        createdAt: "Сейчас",
+      },
+      {
+        id: "ready-beat",
+        service: "Готовый бит — Dark Drill",
+        provider: "drillking",
+        status: "pending" as const,
+        deadline: "Ожидает подтверждения перевода",
+        price: 5000,
+        createdAt: "16 окт 2025",
+      },
+      {
         id: 1,
         service: "Trap бит production",
         provider: "trapmaster",

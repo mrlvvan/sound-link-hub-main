@@ -6,7 +6,6 @@ import {
   Share2,
   Instagram,
   Twitter,
-  Send,
   Star,
   BadgeCheck,
   Award,
@@ -33,7 +32,6 @@ interface UserProfileCardProps {
   socialLinks?: {
     instagram?: string;
     twitter?: string;
-    telegram?: string;
   };
   badges?: Array<{
     label: string;
@@ -214,13 +212,6 @@ export const UserProfileCard = ({
               <Button variant="ghost" size="icon" asChild>
                 <a href={socialLinks.twitter} target="_blank" rel="noopener noreferrer">
                   <Twitter className="w-4 h-4" strokeWidth={1.5} />
-                </a>
-              </Button>
-            )}
-            {socialLinks.telegram && (
-              <Button variant="ghost" size="icon" asChild>
-                <a href={socialLinks.telegram} target="_blank" rel="noopener noreferrer">
-                  <Send className="w-4 h-4" strokeWidth={1.5} />
                 </a>
               </Button>
             )}

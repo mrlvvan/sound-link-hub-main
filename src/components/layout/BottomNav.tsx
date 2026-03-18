@@ -1,5 +1,6 @@
 import { Home, Search, Package, Mic2, User, PlayCircle } from "lucide-react";
 import { NavLink } from "react-router-dom";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const navItems = [
   { icon: Home, label: "Главная", path: "/" },
@@ -39,6 +40,7 @@ export const BottomNav = () => {
               )}
             </NavLink>
           ))}
+          <ThemeToggle variant="compact" />
         </div>
       </div>
     </nav>

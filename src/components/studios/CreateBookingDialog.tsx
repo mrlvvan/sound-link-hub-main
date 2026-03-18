@@ -21,6 +21,10 @@ interface CreateBookingDialogProps {
   pricePerHour?: number;
   pricePerDay?: number;
   pricePerSession?: number;
+  /** Требуется ли предоплата (настройка студии, по желанию) */
+  requiresPrepayment?: boolean;
+  /** Процент предоплаты 0–50 (если требуется) */
+  prepaymentPercent?: number;
   children?: React.ReactNode;
 }
 
@@ -30,6 +34,8 @@ export const CreateBookingDialog = ({
   pricePerHour,
   pricePerDay,
   pricePerSession,
+  requiresPrepayment = false,
+  prepaymentPercent = 50,
   children
 }: CreateBookingDialogProps) => {
   const [open, setOpen] = useState(false);
@@ -85,6 +91,8 @@ export const CreateBookingDialog = ({
     const totalBeforeFee = basePrice + additionalPrice;
     const platformFee = Math.round(totalBeforeFee * 0.1);
     const total = totalBeforeFee + platformFee;
+    const percent = Math.min(50, Math.max(0, prepaymentPercent || 0));
+    const prepaymentAmount = requiresPrepayment ? Math.round(total * (percent / 100)) : 0;
 
     return {
       duration,
@@ -92,6 +100,7 @@ export const CreateBookingDialog = ({
       additionalPrice,
       platformFee,
       total,
+      prepaymentAmount,
       start: format(start, "d MMMM yyyy, HH:mm", { locale: ru }),
       end: format(end, "d MMMM yyyy, HH:mm", { locale: ru })
     };
@@ -115,14 +124,18 @@ export const CreateBookingDialog = ({
     duration: booking.duration,
     price: booking.basePrice + booking.additionalPrice,
     platformFee: booking.platformFee,
-    total: booking.total
+    total: booking.total,
+    requiresPrepayment,
+    prepaymentPercent: requiresPrepayment ? Math.min(50, Math.max(0, prepaymentPercent || 0)) : 0,
+    prepaymentAmount: booking.prepaymentAmount ?? 0
   } : {
     type: "booking" as const,
     service: studioName,
     provider: ownerUsername,
     price: 0,
     platformFee: 0,
-    total: 0
+    total: 0,
+    prepaymentAmount: 0
   };
 
   return (
@@ -312,6 +325,18 @@ export const CreateBookingDialog = ({
                       <span className="text-muted-foreground">Комиссия (10%)</span>
                       <span className="font-medium">{formatPrice(booking.platformFee)}</span>
                     </div>
+                    {requiresPrepayment && booking.prepaymentAmount > 0 && (
+                      <>
+                        <Separator />
+                        <div className="flex justify-between text-primary font-medium">
+                          <span>Предоплата (до 50%)</span>
+                          <span>{formatPrice(booking.prepaymentAmount)}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Остаток — при/после аренды
+                        </p>
+                      </>
+                    )}
                     <Separator />
                     <div className="flex justify-between text-base">
                       <span className="font-semibold">Итого</span>
@@ -327,7 +352,9 @@ export const CreateBookingDialog = ({
               onClick={handleProceedToPayment}
               disabled={!booking || !startDate || !endDate}
             >
-              Забронировать и оплатить
+              {requiresPrepayment && booking?.prepaymentAmount
+                ? `Забронировать (предоплата ${formatPrice(booking.prepaymentAmount)})`
+                : "Забронировать"}
             </Button>
           </div>
         </DialogContent>

@@ -1,13 +1,61 @@
 import { FeedSnippet } from "@/components/feed/FeedSnippet";
+import { AddBeatDialog } from "@/components/beats/AddBeatDialog";
 import { useState, useEffect, useRef } from "react";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/lib/supabase";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+
+type BeatFromDb = {
+  id: string;
+  track_name: string;
+  genre: string;
+  description: string | null;
+  audio_url: string | null;
+  cover_gradient: string | null;
+  service_title: string | null;
+  service_price: number | null;
+  likes_count: number;
+  profiles: { username: string } | null;
+};
 
 const Feed = () => {
   const { safeAreaTopInset } = useSettingsStore();
+  const { user } = useAuth();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [addBeatOpen, setAddBeatOpen] = useState(false);
+  const [beatsFromDb, setBeatsFromDb] = useState<BeatFromDb[]>([]);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const snippets = [
+  const loadBeats = async () => {
+    const { data } = await supabase
+      .from("beats")
+      .select("id, track_name, genre, description, audio_url, cover_gradient, service_title, service_price, likes_count, profiles!beats_user_id_fkey(username)")
+      .order("created_at", { ascending: false });
+    if (data) setBeatsFromDb((data as any[]).map((row) => ({ ...row, profiles: row.profiles ?? null })) as BeatFromDb[]);
+  };
+
+  useEffect(() => {
+    loadBeats();
+  }, [addBeatOpen]);
+
+  const dbSnippets = beatsFromDb.map((b) => ({
+    id: b.id,
+    username: (b.profiles as { username?: string } | null)?.username ?? "unknown",
+    trackName: b.track_name,
+    genre: b.genre,
+    likes: b.likes_count ?? 0,
+    comments: 0,
+    gradientBg: b.cover_gradient || "bg-gradient-to-br from-purple-900 via-purple-700 to-pink-600",
+    description: b.description || "",
+    serviceTitle: b.service_title || "Аренда студии",
+    servicePrice: b.service_price ?? 2500,
+    audioUrl: b.audio_url || "/audio/62757_232225.mp3",
+    commentsData: [],
+  }));
+
+  const mockSnippets = [
     {
       id: "1",
       username: "trapmaster",
@@ -115,6 +163,8 @@ const Feed = () => {
     },
   ];
 
+  const snippets = [...dbSnippets, ...mockSnippets];
+
   useEffect(() => {
     const handleScroll = () => {
       if (!containerRef.current) return;
@@ -153,6 +203,22 @@ const Feed = () => {
           isActive={index === activeIndex}
         />
       ))}
+      {user && (
+        <>
+          <Button
+            onClick={() => setAddBeatOpen(true)}
+            size="icon"
+            className="fixed bottom-20 right-4 lg:bottom-8 lg:right-8 w-14 h-14 rounded-full shadow-lg bg-primary hover:bg-primary/90 z-40"
+          >
+            <Plus className="w-7 h-7" />
+          </Button>
+          <AddBeatDialog
+            open={addBeatOpen}
+            onOpenChange={setAddBeatOpen}
+            onSuccess={() => loadBeats()}
+          />
+        </>
+      )}
     </div>
   );
 };

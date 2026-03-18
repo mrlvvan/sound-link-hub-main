@@ -188,7 +188,7 @@ export const CreateOrderDialog = ({ providerUsername, providerServices, children
                   </div>
                   <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mt-3">
                     <p className="text-xs text-muted-foreground">
-                      💰 Средства будут заморожены на платформе до завершения работы
+                      🤝 П2П: переводы напрямую исполнителю. Платформа — гарант сделки.
                     </p>
                   </div>
                 </div>

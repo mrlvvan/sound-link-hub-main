@@ -291,7 +291,7 @@ const AddStudio = () => {
           <Label htmlFor="contact">Контакт для связи</Label>
           <Input
             id="contact"
-            placeholder="Telegram: @username или +7 (XXX) XXX-XX-XX"
+            placeholder="Email, телефон или @username"
             value={formData.contact}
             onChange={(e) => setFormData({ ...formData, contact: e.target.value })}
             className="mt-1.5"

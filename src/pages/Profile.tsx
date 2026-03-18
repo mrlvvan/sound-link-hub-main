@@ -1,7 +1,7 @@
-import { useState } from "react";
-import { Settings, Share2, Star, Package, Music, Edit3, Instagram, Twitter, Building2, Plus } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Settings, Share2, Star, Package, Music, Edit3, Building2, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ProfileServiceCard } from "@/components/profile/ProfileServiceCard";
 import { SnippetGridItem } from "@/components/profile/SnippetGridItem";
@@ -9,65 +9,47 @@ import { PurchaseItem } from "@/components/profile/PurchaseItem";
 import { SettingsDialog } from "@/components/profile/SettingsDialog";
 import { Link } from "react-router-dom";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useAuth } from "@/contexts/AuthContext";
+import { AddBeatDialog } from "@/components/beats/AddBeatDialog";
+import { supabase } from "@/lib/supabase";
+
+// По 1 примеру — остальное добавляется пользователем
+const EXAMPLE_SERVICE = { title: "Создание Trap-битов", price: 15000, views: 0, ordersCompleted: 0 };
+const EXAMPLE_PURCHASE = { service: "EDM трек production", provider: "example", date: "—", price: 20000, status: "completed" as const };
+const EXAMPLE_STUDIO = { name: "Моя студия", type: "С аппаратурой", bookings: 0, rating: 0 };
+const EXAMPLE_SNIPPET = { title: "Мой первый бит", genre: "Trap", gradient: "bg-gradient-to-br from-purple-900 via-purple-700 to-pink-600" };
+const followStats = [{ label: "Подписчики", value: "0", change: 0 }, { label: "Подписки", value: "0", change: 0 }, { label: "Лайки", value: "0", change: 0 }];
 
 const Profile = () => {
   const { safeAreaTopInset, isFullscreen } = useSettingsStore();
+  const { profile, user } = useAuth();
   const [settingsOpen, setSettingsOpen] = useState(false);
-  
-  const followStats = [
-    { label: "Подписчики", value: "12.5K", change: 24 },
-    { label: "Подписки", value: "340", change: -3 },
-    { label: "Лайки", value: "8.2K", change: 156 },
-  ];
+  const [addBeatOpen, setAddBeatOpen] = useState(false);
+  const [myBeats, setMyBeats] = useState<{ track_name: string; genre: string; cover_gradient: string | null }[]>([]);
 
+  const displayName = profile?.display_name || profile?.username || user?.email?.split("@")[0] || "Пользователь";
+  const username = profile?.username ? `@${profile.username}` : "";
+
+  useEffect(() => {
+    if (!user?.id) return;
+    const load = async () => {
+      const { data } = await supabase.from("beats").select("track_name, genre, cover_gradient").eq("user_id", user.id).order("created_at", { ascending: false });
+      setMyBeats(data ?? []);
+    };
+    load();
+  }, [user?.id, addBeatOpen]);
+
+  const snippets = myBeats.length > 0
+    ? myBeats.map((b) => ({ title: b.track_name, genre: b.genre, gradient: b.cover_gradient || EXAMPLE_SNIPPET.gradient }))
+    : [EXAMPLE_SNIPPET];
+
+  const services = [EXAMPLE_SERVICE];
+  const purchases = [EXAMPLE_PURCHASE];
+  const myStudios = [EXAMPLE_STUDIO];
   const stats = [
-    { label: "Заказы", value: "23", icon: Package },
-    { label: "Рейтинг", value: "4.9", icon: Star },
-    { label: "Треки", value: "47", icon: Music },
-  ];
-
-  const services = [
-    { title: "Создание Trap-битов", price: 15000, views: 1234, ordersCompleted: 12 },
-    { title: "Сведение и мастеринг", price: 8000, views: 867, ordersCompleted: 8 },
-    { title: "Drill beat production", price: 12000, views: 542, ordersCompleted: 5 },
-  ];
-
-  const snippets = [
-    { title: "Dark Drill", genre: "Drill", gradient: "bg-gradient-to-br from-purple-900 via-purple-700 to-pink-600" },
-    { title: "Neon Nights", genre: "EDM", gradient: "bg-gradient-to-br from-cyan-900 via-cyan-600 to-blue-600" },
-    { title: "Lo-Fi Chill", genre: "Lo-Fi", gradient: "bg-gradient-to-br from-green-900 via-green-600 to-teal-600" },
-    { title: "Trap Banger", genre: "Trap", gradient: "bg-gradient-to-br from-orange-900 via-red-700 to-pink-600" },
-    { title: "Street Energy", genre: "Drill", gradient: "bg-gradient-to-br from-gray-900 via-slate-700 to-purple-900" },
-    { title: "Summer Vibes", genre: "Pop", gradient: "bg-gradient-to-br from-pink-900 via-rose-600 to-orange-600" },
-  ];
-
-  const purchases = [
-    {
-      service: "EDM трек production",
-      provider: "edm_master",
-      date: "5 окт 2025",
-      price: 20000,
-      status: "completed" as const,
-    },
-    {
-      service: "Вокал под ключ",
-      provider: "vocal_pro",
-      date: "1 окт 2025",
-      price: 12000,
-      status: "completed" as const,
-    },
-    {
-      service: "Аранжировка трека",
-      provider: "arranger_pro",
-      date: "28 сен 2025",
-      price: 10000,
-      status: "cancelled" as const,
-    },
-  ];
-
-  const myStudios = [
-    { name: "Studio Flow", type: "С аппаратурой", bookings: 34, rating: 4.9 },
-    { name: "Репбаза Central", type: "Без аппаратуры", bookings: 18, rating: 4.7 },
+    { label: "Заказы", value: "0", icon: Package },
+    { label: "Рейтинг", value: "—", icon: Star },
+    { label: "Треки", value: String(myBeats.length), icon: Music },
   ];
 
   return (
@@ -76,13 +58,14 @@ const Profile = () => {
       <div className="flex justify-between items-start mb-4">
         <div className="flex items-center gap-4">
           <Avatar className="w-20 h-20 border-2 border-primary shadow-neon">
+            <AvatarImage src={profile?.avatar_url ?? undefined} />
             <AvatarFallback className="bg-gradient-primary text-primary-foreground text-2xl font-bold">
-              DJ
+              {displayName.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div>
-            <h1 className="text-2xl font-bold mb-1">DJ ProMax</h1>
-            <p className="text-muted-foreground text-sm">Trap-продюсер и звукарь</p>
+            <h1 className="text-2xl font-bold mb-1">{displayName}</h1>
+            <p className="text-muted-foreground text-sm">{username || user?.email || "Ваш профиль"}</p>
           </div>
         </div>
         <div className="flex gap-2">
@@ -97,7 +80,7 @@ const Profile = () => {
 
       {/* Bio */}
       <p className="text-sm mb-3 text-muted-foreground">
-        Профессиональный битмейкер. Специализация: Trap, Drill и Hip-Hop. Более 5 лет опыта.
+        {profile?.bio || "Добавьте описание в настройках профиля."}
       </p>
 
       {/* Follow Stats - compact with dividers like in UserProfileCard */}
@@ -115,18 +98,6 @@ const Profile = () => {
             <div className="text-xs text-muted-foreground">{stat.label}</div>
           </button>
         ))}
-      </div>
-
-      {/* Social Links */}
-      <div className="flex gap-2 mb-4">
-        <Button variant="outline" size="sm" className="border-primary/30 hover:border-primary">
-          <Instagram className="w-4 h-4 mr-2" />
-          Instagram
-        </Button>
-        <Button variant="outline" size="sm" className="border-primary/30 hover:border-primary">
-          <Twitter className="w-4 h-4 mr-2" />
-          Twitter
-        </Button>
       </div>
 
       {/* Stats */}
@@ -169,7 +140,13 @@ const Profile = () => {
         <TabsContent value="all" className="space-y-6">
           {/* Snippets */}
           <section>
-            <h2 className="text-xl font-semibold mb-4">Мои отрывки</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Мои отрывки</h2>
+              <Button size="sm" onClick={() => setAddBeatOpen(true)} className="bg-gradient-primary hover:shadow-neon">
+                <Plus className="w-4 h-4 mr-1.5" />
+                Добавить бит
+              </Button>
+            </div>
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
               {snippets.map((snippet, index) => (
                 <SnippetGridItem key={index} {...snippet} />
@@ -191,7 +168,7 @@ const Profile = () => {
           <section>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Мои студии</h2>
-              <Link to="/studios/add">
+              <Link to="/add-studio">
                 <Button size="sm" variant="outline">
                   <Plus className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
                   Добавить
@@ -243,7 +220,13 @@ const Profile = () => {
         <TabsContent value="provider" className="space-y-6">
           {/* Snippets */}
           <section>
-            <h2 className="text-xl font-semibold mb-4">Мои отрывки</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold">Мои отрывки</h2>
+              <Button size="sm" onClick={() => setAddBeatOpen(true)} className="gap-1.5">
+                <Plus className="w-4 h-4" strokeWidth={1.5} />
+                Добавить бит
+              </Button>
+            </div>
             <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 lg:gap-4">
               {snippets.map((snippet, index) => (
                 <SnippetGridItem key={index} {...snippet} />
@@ -267,7 +250,7 @@ const Profile = () => {
           <section>
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-xl font-semibold">Мои студии</h2>
-              <Link to="/studios/add">
+              <Link to="/add-studio">
                 <Button size="sm" className="bg-gradient-primary hover:shadow-neon">
                   <Plus className="w-4 h-4 mr-1.5" strokeWidth={1.5} />
                   Добавить студию
@@ -314,7 +297,7 @@ const Profile = () => {
               <div className="text-center py-12 bg-card border border-dashed border-border rounded-xl">
                 <Building2 className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" strokeWidth={1.5} />
                 <p className="text-muted-foreground mb-4">У вас пока нет студий</p>
-                <Link to="/studios/add">
+                <Link to="/add-studio">
                   <Button className="bg-gradient-primary hover:shadow-neon">
                     <Plus className="w-4 h-4 mr-2" strokeWidth={1.5} />
                     Добавить первую студию
@@ -339,6 +322,7 @@ const Profile = () => {
       </Tabs>
 
       <SettingsDialog open={settingsOpen} onOpenChange={setSettingsOpen} />
+      <AddBeatDialog open={addBeatOpen} onOpenChange={setAddBeatOpen} />
     </div>
   );
 };

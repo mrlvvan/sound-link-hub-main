@@ -7,7 +7,7 @@ import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { formatPrice } from "@/lib/formatPrice";
-import { openTelegramChat } from "@/lib/telegramUtils";
+import { EntityChat } from "@/components/chat/EntityChat";
 
 const BookingDetail = () => {
   const { bookingId } = useParams();
@@ -124,16 +124,14 @@ const BookingDetail = () => {
           <Separator className="my-4" />
 
           {/* Funds Status */}
-          {booking.fundsStatus === "frozen" && (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
-              <p className="text-sm font-medium flex items-center gap-2">
-                💰 Средства заморожены на платформе
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Деньги будут переведены владельцу после завершения аренды
-              </p>
-            </div>
-          )}
+          <div className="bg-primary/10 border border-primary/20 rounded-lg p-4 mb-4">
+            <p className="text-sm font-medium flex items-center gap-2">
+              🤝 П2П: платформа — гарант сделки
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Переводы напрямую владельцу. Реквизиты в чате.
+            </p>
+          </div>
 
           {/* Address */}
           <div className="mb-4">
@@ -247,16 +245,16 @@ const BookingDetail = () => {
                 <p className="text-sm text-muted-foreground">@{booking.studio.owner.username}</p>
               </div>
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => openTelegramChat(booking.studio.owner.username)}
-              className="border-primary/30 hover:border-primary hover:bg-primary/10"
-            >
-              <MessageCircle className="w-4 h-4 mr-2" />
-              Написать
-            </Button>
           </div>
+        </Card>
+
+        {/* Чат по бронированию */}
+        <Card className="p-6">
+          <h3 className="font-semibold mb-4 flex items-center gap-2">
+            <MessageCircle className="w-4 h-4" />
+            Чат по бронированию
+          </h3>
+          <EntityChat entityType="booking" entityId={bookingId ?? ""} demo={bookingId === "demo"} />
         </Card>
 
         {/* Actions */}

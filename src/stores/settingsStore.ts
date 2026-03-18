@@ -3,7 +3,7 @@ import { create } from 'zustand';
 type MessagesAccess = 'everyone' | 'followers' | 'nobody';
 type Theme = 'light' | 'dark' | 'system';
 type Language = 'ru' | 'en';
-type PaymentMethod = 'sbp' | 'card';
+type PaymentMethod = 'card';
 
 interface SettingsState {
   isFullscreen: boolean;
@@ -32,13 +32,21 @@ interface SettingsState {
   setShowActivity: (value: boolean) => void;
 }
 
+const THEME_KEY = "soundlink-theme";
+
+function loadTheme(): Theme {
+  if (typeof window === "undefined") return "system";
+  const s = localStorage.getItem(THEME_KEY);
+  return s === "light" || s === "dark" || s === "system" ? s : "system";
+}
+
 export const useSettingsStore = create<SettingsState>((set) => ({
   isFullscreen: false,
   safeAreaTopInset: 0,
   messagesAccess: 'everyone',
-  theme: 'system',
+  theme: loadTheme(),
   language: 'ru',
-  paymentMethod: 'sbp',
+  paymentMethod: 'card',
   paymentDetails: '',
   paymentBank: '',
   notificationsEnabled: true,
@@ -46,15 +54,12 @@ export const useSettingsStore = create<SettingsState>((set) => ({
   messageNotifications: true,
   showActivity: true,
   setIsFullscreen: (value) => set({ isFullscreen: value }),
-  updateSafeAreaInsets: () => {
-    const tg = (window as any).Telegram?.WebApp;
-    const safeArea = tg?.safeAreaInset?.top || 0;
-    const contentSafeArea = tg?.contentSafeAreaInset?.top || 0;
-    const totalInset = safeArea + contentSafeArea;
-    set({ safeAreaTopInset: totalInset });
-  },
+  updateSafeAreaInsets: () => set({ safeAreaTopInset: 0 }),
   setMessagesAccess: (value) => set({ messagesAccess: value }),
-  setTheme: (value) => set({ theme: value }),
+  setTheme: (value) => {
+    set({ theme: value });
+    if (typeof window !== "undefined") localStorage.setItem(THEME_KEY, value);
+  },
   setLanguage: (value) => set({ language: value }),
   setPaymentMethod: (value) => set({ paymentMethod: value }),
   setPaymentDetails: (value) => set({ paymentDetails: value }),

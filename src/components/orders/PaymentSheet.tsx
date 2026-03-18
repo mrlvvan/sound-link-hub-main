@@ -5,7 +5,7 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { formatPrice } from "@/lib/formatPrice";
-import { CreditCard, Smartphone, Wallet, CheckCircle2, Loader2 } from "lucide-react";
+import { CheckCircle2, Loader2, Shield } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 
@@ -22,6 +22,9 @@ interface OrderSummary {
   price: number;
   platformFee: number;
   total: number;
+  requiresPrepayment?: boolean;
+  prepaymentPercent?: number;
+  prepaymentAmount?: number;
 }
 
 interface PaymentSheetProps {
@@ -30,33 +33,29 @@ interface PaymentSheetProps {
   orderSummary: OrderSummary;
 }
 
-const paymentMethods = [
-  { id: "card", name: "Банковская карта", icon: CreditCard },
-  { id: "sbp", name: "СБП", icon: Smartphone },
-  { id: "wallet", name: "Электронный кошелек", icon: Wallet },
-];
-
 export const PaymentSheet = ({ open, onOpenChange, orderSummary }: PaymentSheetProps) => {
-  const [selectedMethod, setSelectedMethod] = useState("card");
   const [agreedToTerms, setAgreedToTerms] = useState(false);
+  const prepayment = orderSummary.type === "booking" && orderSummary.requiresPrepayment && orderSummary.prepaymentAmount
+    ? orderSummary.prepaymentAmount
+    : 0;
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const navigate = useNavigate();
 
-  const handlePayment = async () => {
+  const handleConfirm = async () => {
     if (!agreedToTerms) return;
 
     setIsProcessing(true);
-    
-    // Simulate payment processing
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
+    await new Promise(resolve => setTimeout(resolve, 1500));
     setIsProcessing(false);
     setIsSuccess(true);
-    
-    // Show success for 1.5 seconds then navigate
+
     setTimeout(() => {
-      toast.success("Оплата успешно проведена! Средства заморожены на платформе.");
+      toast.success(
+        prepayment > 0
+          ? "Бронирование подтверждено! Переведите предоплату владельцу по реквизитам в чате."
+          : "Сделка подтверждена! Переведите средства напрямую контрагенту по реквизитам в чате."
+      );
       onOpenChange(false);
       setIsSuccess(false);
       setAgreedToTerms(false);
@@ -73,7 +72,9 @@ export const PaymentSheet = ({ open, onOpenChange, orderSummary }: PaymentSheetP
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[90vh] overflow-y-auto">
         <SheetHeader>
-          <SheetTitle className="text-2xl">Оплата</SheetTitle>
+          <SheetTitle className="text-2xl">
+            {orderSummary.type === "booking" ? "Подтверждение бронирования" : "Подтверждение сделки"}
+          </SheetTitle>
         </SheetHeader>
 
         <div className="py-6 space-y-6">
@@ -82,9 +83,9 @@ export const PaymentSheet = ({ open, onOpenChange, orderSummary }: PaymentSheetP
               <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mb-4">
                 <CheckCircle2 className="w-10 h-10 text-green-500" />
               </div>
-              <h3 className="text-2xl font-bold mb-2">Оплата прошла успешно!</h3>
+              <h3 className="text-2xl font-bold mb-2">Сделка подтверждена!</h3>
               <p className="text-muted-foreground text-center">
-                Средства заморожены на платформе
+                Переведите средства напрямую контрагенту по реквизитам в чате
               </p>
             </div>
           ) : (
@@ -133,39 +134,24 @@ export const PaymentSheet = ({ open, onOpenChange, orderSummary }: PaymentSheetP
                     <span className="text-muted-foreground">Комиссия (10%)</span>
                     <span className="font-medium">{formatPrice(orderSummary.platformFee)}</span>
                   </div>
+                  {prepayment > 0 && (
+                    <>
+                      <Separator />
+                      <div className="flex justify-between text-primary font-medium">
+                        <span>Предоплата ({orderSummary.prepaymentPercent}%)</span>
+                        <span>{formatPrice(prepayment)}</span>
+                      </div>
+                      <div className="flex justify-between text-muted-foreground text-xs">
+                        <span>Остаток — при/после аренды</span>
+                        <span>{formatPrice(orderSummary.total - prepayment)}</span>
+                      </div>
+                    </>
+                  )}
                   <Separator />
                   <div className="flex justify-between text-base">
                     <span className="font-semibold">Итого</span>
                     <span className="font-bold text-lg text-primary">{formatPrice(orderSummary.total)}</span>
                   </div>
-                </div>
-              </div>
-
-              {/* Payment Method Selection */}
-              <div className="space-y-3">
-                <Label>Способ оплаты</Label>
-                <div className="space-y-2">
-                  {paymentMethods.map((method) => {
-                    const Icon = method.icon;
-                    return (
-                      <button
-                        key={method.id}
-                        onClick={() => setSelectedMethod(method.id)}
-                        className={cn(
-                          "w-full flex items-center gap-3 p-4 rounded-lg border-2 transition-all",
-                          selectedMethod === method.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border hover:border-primary/50"
-                        )}
-                      >
-                        <Icon className="w-5 h-5" />
-                        <span className="font-medium">{method.name}</span>
-                        {selectedMethod === method.id && (
-                          <CheckCircle2 className="w-5 h-5 ml-auto text-primary" />
-                        )}
-                      </button>
-                    );
-                  })}
                 </div>
               </div>
 
@@ -184,28 +170,35 @@ export const PaymentSheet = ({ open, onOpenChange, orderSummary }: PaymentSheetP
                 </Label>
               </div>
 
-              {/* Info Block */}
+              {/* P2P Info Block */}
               <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-                <p className="text-sm font-medium mb-1">💰 Защита покупателя</p>
+                <p className="text-sm font-medium mb-1 flex items-center gap-2">
+                  <Shield className="w-4 h-4" />
+                  П2П: платформа — гарант сделки
+                </p>
                 <p className="text-xs text-muted-foreground">
-                  Деньги будут заморожены на платформе и переведены исполнителю только после 
-                  {orderSummary.type === "order" ? " принятия работы" : " завершения аренды"}.
+                  Вы переводите деньги напрямую контрагенту (карта, перевод). Платформа не держит средства,
+                  но гарантирует сделку и поможет в случае спора. Реквизиты — в чате после подтверждения.
                 </p>
               </div>
 
-              {/* Payment Button */}
+              {/* Confirm Button */}
               <Button
                 className="w-full h-12 text-base bg-gradient-primary hover:shadow-neon"
-                onClick={handlePayment}
+                onClick={handleConfirm}
                 disabled={!agreedToTerms || isProcessing}
               >
                 {isProcessing ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Обработка...
+                    Подтверждение...
                   </>
+                ) : orderSummary.type === "booking" ? (
+                  prepayment > 0
+                    ? `Подтвердить бронирование (предоплата ${formatPrice(prepayment)})`
+                    : "Подтвердить бронирование"
                 ) : (
-                  `Оплатить ${formatPrice(orderSummary.total)}`
+                  "Подтвердить сделку"
                 )}
               </Button>
             </>
@@ -215,7 +208,3 @@ export const PaymentSheet = ({ open, onOpenChange, orderSummary }: PaymentSheetP
     </Sheet>
   );
 };
-
-function cn(...classes: (string | boolean | undefined)[]) {
-  return classes.filter(Boolean).join(' ');
-}
