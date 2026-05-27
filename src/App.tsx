@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { BottomNav } from "./components/layout/BottomNav";
 import { SidebarNav } from "./components/layout/SidebarNav";
 import { ProtectedRoute } from "./components/auth/ProtectedRoute";
+import { AdminRoute } from "./components/auth/AdminRoute";
 import Home from "./pages/Home";
 import Feed from "./pages/Feed";
 import Search from "./pages/Search";
@@ -22,6 +23,10 @@ import AddStudio from "./pages/AddStudio";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
+import Messages from "./pages/Messages";
+import DirectChat from "./pages/DirectChat";
+import { MiniPlayer } from "./components/player/MiniPlayer";
 
 const queryClient = new QueryClient();
 
@@ -93,8 +98,33 @@ const App = () => {
                     </ProtectedRoute>
                   }
                 />
+                <Route
+                  path="/messages"
+                  element={
+                    <ProtectedRoute>
+                      <Messages />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/messages/:userId"
+                  element={
+                    <ProtectedRoute>
+                      <DirectChat />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/admin"
+                  element={
+                    <AdminRoute>
+                      <Admin />
+                    </AdminRoute>
+                  }
+                />
                 <Route path="*" element={<NotFound />} />
               </Routes>
+              <MiniPlayer />
               <BottomNav />
             </main>
           </div>

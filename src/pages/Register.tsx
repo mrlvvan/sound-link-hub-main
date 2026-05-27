@@ -3,10 +3,11 @@ import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
+import { useAuth } from "@/contexts/AuthContext";
 
 const Register = () => {
+  const { signUp } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [username, setUsername] = useState("");
@@ -18,17 +19,12 @@ const Register = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signUp({
+      await signUp(
         email,
         password,
-        options: {
-          data: {
-            username: username.trim() || `user_${Date.now().toString(36)}`,
-            display_name: displayName.trim() || username.trim() || email.split("@")[0],
-          },
-        },
-      });
-      if (error) throw error;
+        username.trim() || `user_${Date.now().toString(36)}`,
+        displayName.trim() || username.trim() || email.split("@")[0]
+      );
       toast.success("Регистрация успешна. Проверьте email для подтверждения.");
       navigate("/login");
     } catch (err: unknown) {

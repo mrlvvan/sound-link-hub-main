@@ -29,8 +29,7 @@ export const CreateOrderDialog = ({ providerUsername, providerServices, children
 
   const selectedServiceData = providerServices.find(s => s.id === selectedService);
   const servicePrice = selectedServiceData?.price || 0;
-  const platformFee = Math.round(servicePrice * 0.1);
-  const totalPrice = servicePrice + platformFee;
+  const totalPrice = servicePrice;
 
   const handleProceedToPayment = () => {
     if (!selectedService || !requirements || !deadline) return;
@@ -45,7 +44,6 @@ export const CreateOrderDialog = ({ providerUsername, providerServices, children
     requirements,
     deadline: deadline ? format(deadline, "d MMMM yyyy", { locale: ru }) : "",
     price: servicePrice,
-    platformFee,
     total: totalPrice
   };
 
@@ -175,10 +173,6 @@ export const CreateOrderDialog = ({ providerUsername, providerServices, children
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Услуга</span>
                       <span className="font-medium">{formatPrice(servicePrice)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Комиссия платформы (10%)</span>
-                      <span className="font-medium">{formatPrice(platformFee)}</span>
                     </div>
                     <Separator />
                     <div className="flex justify-between text-base">

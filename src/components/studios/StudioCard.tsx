@@ -5,7 +5,7 @@ import { formatPrice } from "@/lib/formatPrice";
 import { Link } from "react-router-dom";
 
 interface StudioCardProps {
-  id: number;
+  id: string | number;
   name: string;
   type: string[];
   pricePerHour?: number;
@@ -13,11 +13,11 @@ interface StudioCardProps {
   pricePerMonth?: number;
   pricePerSession?: number;
   location: string;
-  rating: number;
-  bookings: number;
-  equipment: string;
-  description: string;
-  gradient: string;
+  rating?: number;
+  bookings?: number;
+  equipment?: string;
+  description?: string;
+  gradient?: string;
   photo?: string;
   promotionType?: 'standard' | 'recommended' | 'vip';
 }
@@ -33,9 +33,9 @@ export const StudioCard = ({
   location,
   rating,
   bookings,
-  equipment,
-  description,
-  gradient,
+  equipment = "",
+  description = "",
+  gradient = "bg-gradient-to-br from-violet-600 to-indigo-600",
   photo,
   promotionType = 'standard',
 }: StudioCardProps) => {
@@ -158,14 +158,18 @@ export const StudioCard = ({
         {/* Stats and Price */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4 text-sm">
-            <div className="flex items-center gap-1">
-              <Star className="w-4 h-4 text-primary fill-primary" strokeWidth={1.5} />
-              <span className="font-semibold">{rating}</span>
-            </div>
-            <div className="flex items-center gap-1 text-muted-foreground">
-              <Users className="w-4 h-4" strokeWidth={1.5} />
-              <span>{bookings}</span>
-            </div>
+            {rating !== undefined && (
+              <div className="flex items-center gap-1">
+                <Star className="w-4 h-4 text-primary fill-primary" strokeWidth={1.5} />
+                <span className="font-semibold">{rating}</span>
+              </div>
+            )}
+            {bookings !== undefined && (
+              <div className="flex items-center gap-1 text-muted-foreground">
+                <Users className="w-4 h-4" strokeWidth={1.5} />
+                <span>{bookings}</span>
+              </div>
+            )}
           </div>
           <div className="text-right">
             <p className="text-xl font-bold text-primary">{formatPrice(price)}</p>

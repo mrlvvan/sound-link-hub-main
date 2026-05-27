@@ -7,12 +7,13 @@ import { useSettingsStore } from "@/stores/settingsStore";
 interface ShareSheetProps {
   isOpen: boolean;
   onClose: () => void;
+  trackId: string;
   trackName: string;
   username: string;
 }
 
-export const ShareSheet = ({ isOpen, onClose, trackName, username }: ShareSheetProps) => {
-  const shareUrl = `${window.location.origin}/feed?track=${encodeURIComponent(trackName)}`;
+export const ShareSheet = ({ isOpen, onClose, trackId, trackName, username }: ShareSheetProps) => {
+  const shareUrl = `${window.location.origin}/feed?track=${encodeURIComponent(trackId)}`;
   const { safeAreaTopInset } = useSettingsStore();
 
   const handleCopyLink = async () => {

@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { formatDistanceToNow } from "date-fns";
 import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 type Message = {
   id: string;
@@ -32,12 +33,16 @@ export const EntityChat = ({ entityType, entityId, demo: forceDemo }: EntityChat
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const isDemo = forceDemo || entityId === "demo";
   const storageKey = DEMO_STORAGE_KEY(entityType, entityId);
+  const tableName = entityType === "order" ? "order_messages" : "booking_messages";
+  const entityCol = entityType === "order" ? "order_id" : "booking_id";
 
   const loadFromLocalStorage = useCallback(() => {
+    setError(null);
     try {
       const raw = localStorage.getItem(storageKey);
       if (raw) {
@@ -48,14 +53,13 @@ export const EntityChat = ({ entityType, entityId, demo: forceDemo }: EntityChat
       }
     } catch {
       setMessages([]);
+      setError("Не удалось прочитать локальные сообщения");
     }
     setLoading(false);
   }, [storageKey]);
 
   const loadFromSupabase = useCallback(async () => {
-    const tableName = entityType === "order" ? "order_messages" : "booking_messages";
-    const entityCol = entityType === "order" ? "order_id" : "booking_id";
-
+    setError(null);
     const { data, error } = await supabase
       .from(tableName)
       .select(`
@@ -65,19 +69,23 @@ export const EntityChat = ({ entityType, entityId, demo: forceDemo }: EntityChat
       .eq(entityCol, entityId)
       .order("created_at", { ascending: true });
 
-    if (!error && data) setMessages(data as Message[]);
+    if (error) {
+      setError("Не удалось загрузить сообщения");
+      setLoading(false);
+      return;
+    }
+
+    if (data) setMessages(data as Message[]);
     setLoading(false);
-  }, [entityType, entityId]);
+  }, [entityCol, entityId, tableName]);
 
   useEffect(() => {
+    setLoading(true);
     if (isDemo) {
       loadFromLocalStorage();
       return;
     }
-    loadFromSupabase();
-
-    const tableName = entityType === "order" ? "order_messages" : "booking_messages";
-    const entityCol = entityType === "order" ? "order_id" : "booking_id";
+    void loadFromSupabase();
 
     const channel = supabase
       .channel(`${tableName}-${entityId}`)
@@ -89,14 +97,16 @@ export const EntityChat = ({ entityType, entityId, demo: forceDemo }: EntityChat
           table: tableName,
           filter: `${entityCol}=eq.${entityId}`,
         },
-        () => loadFromSupabase()
+        () => {
+          void loadFromSupabase();
+        }
       )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [entityType, entityId, isDemo]);
+  }, [entityCol, entityId, isDemo, loadFromLocalStorage, loadFromSupabase, tableName]);
 
   useEffect(() => {
     scrollRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -137,7 +147,16 @@ export const EntityChat = ({ entityType, entityId, demo: forceDemo }: EntityChat
       entityType === "order"
         ? { order_id: entityId, sender_id: user.id, text }
         : { booking_id: entityId, sender_id: user.id, text };
-    await supabase.from(tableName).insert(payload);
+    const { error } = await supabase.from(tableName).insert(payload);
+    if (error) {
+      setInput(text);
+      setSending(false);
+      setError("Не удалось отправить сообщение");
+      toast.error(error.message || "Не удалось отправить сообщение");
+      return;
+    }
+
+    await loadFromSupabase();
     setSending(false);
   };
 
@@ -160,6 +179,15 @@ export const EntityChat = ({ entityType, entityId, demo: forceDemo }: EntityChat
             <p className="text-sm text-muted-foreground text-center py-4">
               Загрузка сообщений...
             </p>
+          ) : error ? (
+            <div className="text-center py-4 space-y-3">
+              <p className="text-sm text-destructive">{error}</p>
+              {!isDemo && (
+                <Button size="sm" variant="outline" onClick={() => void loadFromSupabase()}>
+                  Повторить
+                </Button>
+              )}
+            </div>
           ) : messages.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">
               Нет сообщений. Напишите первым
@@ -167,17 +195,17 @@ export const EntityChat = ({ entityType, entityId, demo: forceDemo }: EntityChat
           ) : (
             messages.map((msg) => {
               const isOwn = isDemo ? msg.sender_id === "demo-user" : msg.sender_id === user?.id;
+              const senderName = msg.sender?.display_name || msg.sender?.username || "Пользователь";
+              const senderInitials = senderName.slice(0, 2).toUpperCase();
               return (
                 <div
                   key={msg.id}
                   className={`flex gap-2 ${isOwn ? "flex-row-reverse" : ""}`}
                 >
                   <Avatar className="w-7 h-7 shrink-0">
-                    <AvatarImage src={(msg as any).sender?.avatar_url} />
+                    <AvatarImage src={msg.sender?.avatar_url} />
                     <AvatarFallback className="text-[10px] bg-primary/20">
-                      {((msg as any).sender?.display_name || (msg as any).sender?.username || "?")
-                        .slice(0, 2)
-                        .toUpperCase()}
+                      {senderInitials}
                     </AvatarFallback>
                   </Avatar>
                   <div
@@ -186,7 +214,7 @@ export const EntityChat = ({ entityType, entityId, demo: forceDemo }: EntityChat
                     }`}
                   >
                     <p className="text-xs font-medium opacity-80">
-                      {(msg as any).sender?.display_name || (msg as any).sender?.username || "Пользователь"}
+                      {senderName}
                     </p>
                     <p className="text-sm break-words">{msg.text}</p>
                     <p className="text-[10px] opacity-70 mt-0.5">

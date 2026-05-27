@@ -1,169 +1,53 @@
+import { useEffect, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Plus, RefreshCcw } from "lucide-react";
 import { FeedSnippet } from "@/components/feed/FeedSnippet";
 import { AddBeatDialog } from "@/components/beats/AddBeatDialog";
-import { useState, useEffect, useRef } from "react";
-import { useSettingsStore } from "@/stores/settingsStore";
 import { useAuth } from "@/contexts/AuthContext";
-import { supabase } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
-
-type BeatFromDb = {
-  id: string;
-  track_name: string;
-  genre: string;
-  description: string | null;
-  audio_url: string | null;
-  cover_gradient: string | null;
-  service_title: string | null;
-  service_price: number | null;
-  likes_count: number;
-  profiles: { username: string } | null;
-};
+import { getFeedTracks, type TrackCard } from "@/lib/music";
 
 const Feed = () => {
-  const { safeAreaTopInset } = useSettingsStore();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const highlightedTrackId = searchParams.get("track");
   const [activeIndex, setActiveIndex] = useState(0);
   const [addBeatOpen, setAddBeatOpen] = useState(false);
-  const [beatsFromDb, setBeatsFromDb] = useState<BeatFromDb[]>([]);
+  const [tracks, setTracks] = useState<TrackCard[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   const loadBeats = async () => {
-    const { data } = await supabase
-      .from("beats")
-      .select("id, track_name, genre, description, audio_url, cover_gradient, service_title, service_price, likes_count, profiles!beats_user_id_fkey(username)")
-      .order("created_at", { ascending: false });
-    if (data) setBeatsFromDb((data as any[]).map((row) => ({ ...row, profiles: row.profiles ?? null })) as BeatFromDb[]);
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await getFeedTracks();
+      setTracks(data);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Не удалось загрузить ленту";
+      setError(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    loadBeats();
-  }, [addBeatOpen]);
+    void loadBeats();
+  }, []);
 
-  const dbSnippets = beatsFromDb.map((b) => ({
-    id: b.id,
-    username: (b.profiles as { username?: string } | null)?.username ?? "unknown",
-    trackName: b.track_name,
-    genre: b.genre,
-    likes: b.likes_count ?? 0,
-    comments: 0,
-    gradientBg: b.cover_gradient || "bg-gradient-to-br from-purple-900 via-purple-700 to-pink-600",
-    description: b.description || "",
-    serviceTitle: b.service_title || "Аренда студии",
-    servicePrice: b.service_price ?? 2500,
-    audioUrl: b.audio_url || "/audio/62757_232225.mp3",
-    commentsData: [],
-  }));
+  useEffect(() => {
+    if (!highlightedTrackId || tracks.length === 0 || !containerRef.current) return;
 
-  const mockSnippets = [
-    {
-      id: "1",
-      username: "trapmaster",
-      trackName: "Dark Drill Beat",
-      genre: "Drill",
-      likes: 2341,
-      comments: 89,
-      gradientBg: "bg-gradient-to-br from-purple-900 via-purple-700 to-pink-600",
-      description: "Новый дрилл бит в стиле NY 🔥 Записывал в студии на Маяковской. Доступен для аренды! #drill #beat #music",
-      serviceTitle: "Запись трека",
-      servicePrice: 3000,
-      audioUrl: "/audio/62757_232225.mp3",
-      commentsData: [
-        { id: "c1", username: "music_lover", text: "Огонь! Когда релиз?", likes: 12, timestamp: "2ч назад" },
-        { id: "c2", username: "producer_23", text: "Жесткий саунд, респект!", likes: 8, timestamp: "1ч назад" },
-        { id: "c3", username: "beatmaker", text: "Можно купить эксклюзив?", likes: 5, timestamp: "30мин назад" },
-      ],
-    },
-    {
-      id: "2",
-      username: "synth_wave",
-      trackName: "Neon Nights",
-      genre: "EDM",
-      likes: 1876,
-      comments: 54,
-      gradientBg: "bg-gradient-to-br from-cyan-900 via-cyan-600 to-blue-600",
-      description: "Синтвейв атмосфера города. Работал над этим треком 3 недели ✨",
-      serviceTitle: "Сведение",
-      servicePrice: 2500,
-      audioUrl: "/audio/62757_260347.mp3",
-      commentsData: [
-        { id: "c4", username: "dj_alex", text: "Играл вчера в клубе, зал взорвался!", likes: 24, timestamp: "5ч назад" },
-        { id: "c5", username: "nightrider", text: "Прямо в ночную поездку", likes: 15, timestamp: "3ч назад" },
-      ],
-    },
-    {
-      id: "3",
-      username: "lo_fi_beats",
-      trackName: "Chill Vibes",
-      genre: "Lo-Fi",
-      likes: 3124,
-      comments: 112,
-      gradientBg: "bg-gradient-to-br from-green-900 via-green-600 to-teal-600",
-      description: "Спокойный лоу-фай для учебы и отдыха 🍃 Семплировал винил 70-х",
-      serviceTitle: "Аренда студии",
-      servicePrice: 2000,
-      audioUrl: "/audio/62757_265416.mp3",
-      commentsData: [
-        { id: "c6", username: "student_life", text: "Под это учу экзамены, спасибо!", likes: 45, timestamp: "1д назад" },
-        { id: "c7", username: "chill_master", text: "Добавил в плейлист", likes: 32, timestamp: "8ч назад" },
-        { id: "c8", username: "vinyl_collector", text: "Какой винил использовал?", likes: 18, timestamp: "5ч назад" },
-      ],
-    },
-    {
-      id: "4",
-      username: "beat_maker_pro",
-      trackName: "Trap Banger",
-      genre: "Trap",
-      likes: 4521,
-      comments: 203,
-      gradientBg: "bg-gradient-to-br from-orange-900 via-red-700 to-pink-600",
-      description: "Хардкорный трэп! 808 бас пробьет любые колонки 💥 #trap #bass #producer",
-      serviceTitle: "Мастеринг",
-      servicePrice: 3500,
-      audioUrl: "/audio/62757_274560.mp3",
-      commentsData: [
-        { id: "c9", username: "bass_head", text: "Басс просто космос!", likes: 67, timestamp: "6ч назад" },
-        { id: "c10", username: "trap_nation", text: "Можем обсудить коллаб?", likes: 42, timestamp: "4ч назад" },
-      ],
-    },
-    {
-      id: "5",
-      username: "drill_king",
-      trackName: "Street Energy",
-      genre: "Drill",
-      likes: 5234,
-      comments: 178,
-      gradientBg: "bg-gradient-to-br from-gray-900 via-slate-700 to-purple-900",
-      description: "Уличная энергия Москвы в звуке 🏙️ Записано в подземке",
-      serviceTitle: "Запись трека",
-      servicePrice: 2800,
-      audioUrl: "/audio/62757_232225.mp3",
-      commentsData: [
-        { id: "c11", username: "moscow_drill", text: "Столичный drill на высоте!", likes: 89, timestamp: "12ч назад" },
-        { id: "c12", username: "street_sound", text: "Атмосфера огонь", likes: 56, timestamp: "9ч назад" },
-      ],
-    },
-    {
-      id: "6",
-      username: "edm_master",
-      trackName: "Festival Vibes",
-      genre: "EDM",
-      likes: 6891,
-      comments: 312,
-      gradientBg: "bg-gradient-to-br from-pink-900 via-purple-700 to-indigo-600",
-      description: "Фестивальный EDM трек! Drop на 1:20 разорвет танцпол 🎉🎊 Премьера на фестивале в следующем месяце",
-      serviceTitle: "Аренда студии",
-      servicePrice: 4000,
-      audioUrl: "/audio/62757_260347.mp3",
-      commentsData: [
-        { id: "c13", username: "festival_lover", text: "На каком фестивале будет премьера?", likes: 125, timestamp: "1д назад" },
-        { id: "c14", username: "edm_fan", text: "Drop просто убийственный!", likes: 98, timestamp: "18ч назад" },
-        { id: "c15", username: "dj_mike", text: "Уже добавил в сет!", likes: 76, timestamp: "10ч назад" },
-      ],
-    },
-  ];
+    const selectedIndex = tracks.findIndex((track) => track.id === highlightedTrackId);
+    if (selectedIndex === -1) return;
 
-  const snippets = [...dbSnippets, ...mockSnippets];
+    setActiveIndex(selectedIndex);
+    containerRef.current.scrollTo({
+      top: selectedIndex * window.innerHeight,
+      behavior: "smooth",
+    });
+  }, [highlightedTrackId, tracks]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -173,17 +57,70 @@ const Feed = () => {
       const windowHeight = window.innerHeight;
       const newIndex = Math.round(scrollPosition / windowHeight);
 
-      if (newIndex !== activeIndex && newIndex >= 0 && newIndex < snippets.length) {
+      if (newIndex !== activeIndex && newIndex >= 0 && newIndex < tracks.length) {
         setActiveIndex(newIndex);
       }
     };
 
     const container = containerRef.current;
-    if (container) {
-      container.addEventListener("scroll", handleScroll);
-      return () => container.removeEventListener("scroll", handleScroll);
-    }
-  }, [activeIndex, snippets.length]);
+    if (!container) return;
+
+    container.addEventListener("scroll", handleScroll);
+    return () => container.removeEventListener("scroll", handleScroll);
+  }, [activeIndex, tracks.length]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4 text-center">
+        <div>
+          <p className="text-lg font-medium">Загружаем ленту</p>
+          <p className="text-sm text-muted-foreground">Подтягиваем уже опубликованные биты</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md text-center space-y-4">
+          <div>
+            <p className="text-lg font-semibold">Лента сейчас недоступна</p>
+            <p className="text-sm text-muted-foreground">{error}</p>
+          </div>
+          <Button onClick={() => void loadBeats()} className="gap-2">
+            <RefreshCcw className="w-4 h-4" />
+            Повторить
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  if (tracks.length === 0) {
+    return (
+      <div className="min-h-screen flex items-center justify-center px-4">
+        <div className="max-w-md text-center space-y-4">
+          <div>
+            <p className="text-lg font-semibold">В ленте пока нет треков</p>
+            <p className="text-sm text-muted-foreground">
+              Опубликуйте первый бит, и он появится здесь без моков и заглушек.
+            </p>
+          </div>
+          {user && (
+            <Button onClick={() => setAddBeatOpen(true)}>
+              Опубликовать трек
+            </Button>
+          )}
+          <AddBeatDialog
+            open={addBeatOpen}
+            onOpenChange={setAddBeatOpen}
+            onSuccess={() => void loadBeats()}
+          />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
@@ -196,11 +133,23 @@ const Feed = () => {
           display: none;
         }
       `}</style>
-      {snippets.map((snippet, index) => (
+      {tracks.map((track, index) => (
         <FeedSnippet
-          key={snippet.id}
-          {...snippet}
+          key={track.id}
+          id={track.id}
+          userId={track.userId}
+          username={track.username}
+          displayName={track.displayName}
+          avatarUrl={track.avatarUrl}
+          trackName={track.trackName}
+          genre={track.genre}
+          likes={track.likes}
+          comments={track.comments}
+          gradientBg={track.gradientBg}
           isActive={index === activeIndex}
+          description={track.description}
+          servicePrice={track.servicePrice}
+          audioUrl={track.audioUrl}
         />
       ))}
       {user && (
@@ -215,7 +164,7 @@ const Feed = () => {
           <AddBeatDialog
             open={addBeatOpen}
             onOpenChange={setAddBeatOpen}
-            onSuccess={() => loadBeats()}
+            onSuccess={() => void loadBeats()}
           />
         </>
       )}

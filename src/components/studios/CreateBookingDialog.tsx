@@ -88,9 +88,7 @@ export const CreateBookingDialog = ({
       .filter(s => additionalServices.includes(s.id))
       .reduce((sum, s) => sum + s.price, 0);
 
-    const totalBeforeFee = basePrice + additionalPrice;
-    const platformFee = Math.round(totalBeforeFee * 0.1);
-    const total = totalBeforeFee + platformFee;
+    const total = basePrice + additionalPrice;
     const percent = Math.min(50, Math.max(0, prepaymentPercent || 0));
     const prepaymentAmount = requiresPrepayment ? Math.round(total * (percent / 100)) : 0;
 
@@ -98,7 +96,6 @@ export const CreateBookingDialog = ({
       duration,
       basePrice,
       additionalPrice,
-      platformFee,
       total,
       prepaymentAmount,
       start: format(start, "d MMMM yyyy, HH:mm", { locale: ru }),
@@ -123,7 +120,6 @@ export const CreateBookingDialog = ({
     endDate: booking.end,
     duration: booking.duration,
     price: booking.basePrice + booking.additionalPrice,
-    platformFee: booking.platformFee,
     total: booking.total,
     requiresPrepayment,
     prepaymentPercent: requiresPrepayment ? Math.min(50, Math.max(0, prepaymentPercent || 0)) : 0,
@@ -133,7 +129,6 @@ export const CreateBookingDialog = ({
     service: studioName,
     provider: ownerUsername,
     price: 0,
-    platformFee: 0,
     total: 0,
     prepaymentAmount: 0
   };
@@ -321,10 +316,6 @@ export const CreateBookingDialog = ({
                         <span className="font-medium">{formatPrice(booking.additionalPrice)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Комиссия (10%)</span>
-                      <span className="font-medium">{formatPrice(booking.platformFee)}</span>
-                    </div>
                     {requiresPrepayment && booking.prepaymentAmount > 0 && (
                       <>
                         <Separator />

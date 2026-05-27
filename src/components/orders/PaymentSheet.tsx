@@ -20,7 +20,6 @@ interface OrderSummary {
   endDate?: string;
   duration?: string;
   price: number;
-  platformFee: number;
   total: number;
   requiresPrepayment?: boolean;
   prepaymentPercent?: number;
@@ -129,10 +128,6 @@ export const PaymentSheet = ({ open, onOpenChange, orderSummary }: PaymentSheetP
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Стоимость</span>
                     <span className="font-medium">{formatPrice(orderSummary.price)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Комиссия (10%)</span>
-                    <span className="font-medium">{formatPrice(orderSummary.platformFee)}</span>
                   </div>
                   {prepayment > 0 && (
                     <>

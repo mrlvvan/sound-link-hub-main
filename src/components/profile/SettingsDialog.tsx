@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { Shield, Palette, Globe, CreditCard, Bell, Info, ArrowLeft, LogOut } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -7,9 +8,11 @@ import { Separator } from "@/components/ui/separator";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
+import { saveProfile } from "@/lib/music";
 
 interface SettingsDialogProps {
   open: boolean;
@@ -18,7 +21,12 @@ interface SettingsDialogProps {
 
 export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { signOut, user, profile, refreshProfile } = useAuth();
+  const [displayName, setDisplayName] = useState("");
+  const [username, setUsername] = useState("");
+  const [bio, setBio] = useState("");
+  const [avatarFile, setAvatarFile] = useState<File | null>(null);
+  const [savingProfile, setSavingProfile] = useState(false);
   const {
     messagesAccess,
     theme,
@@ -42,9 +50,39 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
     setShowActivity,
   } = useSettingsStore();
 
+  useEffect(() => {
+    if (!open) return;
+    setDisplayName(profile?.display_name || "");
+    setUsername(profile?.username || "");
+    setBio(profile?.bio || "");
+    setAvatarFile(null);
+  }, [open, profile]);
+
   const handlePaymentDetailsChange = (value: string) => {
     setPaymentDetails(value);
     toast.success("Платёжная информация сохранена");
+  };
+
+  const handleProfileSave = async () => {
+    if (!user) return;
+
+    setSavingProfile(true);
+    try {
+      await saveProfile({
+        user,
+        username,
+        displayName,
+        bio,
+        avatarFile,
+      });
+      await refreshProfile(user);
+      setAvatarFile(null);
+      toast.success("Профиль сохранён");
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Не удалось сохранить профиль");
+    } finally {
+      setSavingProfile(false);
+    }
   };
 
   return (
@@ -65,6 +103,69 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
         </DialogHeader>
 
         <div className="px-4 pb-4 space-y-0">
+          <div className="py-3">
+            <div className="flex items-center gap-3 mb-3">
+              <Globe className="w-5 h-5 text-muted-foreground" strokeWidth={1.5} />
+              <h3 className="font-medium">Публичный профиль</h3>
+            </div>
+
+            <div className="space-y-3 pl-8">
+              <div>
+                <p className="text-sm mb-2">Отображаемое имя</p>
+                <Input
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="Как показывать вас в профиле"
+                  disabled={savingProfile}
+                />
+              </div>
+
+              <div>
+                <p className="text-sm mb-2">Username</p>
+                <Input
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="your_username"
+                  disabled={savingProfile}
+                />
+              </div>
+
+              <div>
+                <p className="text-sm mb-2">Описание</p>
+                <Textarea
+                  value={bio}
+                  onChange={(e) => setBio(e.target.value)}
+                  placeholder="Расскажите о себе и своих битах"
+                  className="min-h-[110px]"
+                  disabled={savingProfile}
+                />
+              </div>
+
+              <div>
+                <p className="text-sm mb-2">Аватар</p>
+                <Input
+                  type="file"
+                  accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp"
+                  onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)}
+                  disabled={savingProfile}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  JPG, PNG или WEBP до 5 МБ
+                </p>
+              </div>
+
+              <Button
+                onClick={() => void handleProfileSave()}
+                className="w-full bg-gradient-primary hover:shadow-neon"
+                disabled={savingProfile || !user}
+              >
+                {savingProfile ? "Сохраняем профиль..." : "Сохранить профиль"}
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
           {/* Privacy Section */}
           <div className="py-3">
             <div className="flex items-center gap-3 mb-3">
@@ -114,7 +215,7 @@ export const SettingsDialog = ({ open, onOpenChange }: SettingsDialogProps) => {
             <div className="space-y-3 pl-8">
               <div>
                 <p className="text-sm mb-2">Тема приложения</p>
-                <Tabs value={theme} onValueChange={(value: any) => setTheme(value)} className="w-full">
+                <Tabs value={theme} onValueChange={(value) => setTheme(value as "light" | "dark" | "system")} className="w-full">
                   <TabsList className="w-full grid grid-cols-3">
                     <TabsTrigger value="light" className="text-xs">Светлая</TabsTrigger>
                     <TabsTrigger value="dark" className="text-xs">Тёмная</TabsTrigger>

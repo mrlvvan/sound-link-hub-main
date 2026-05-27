@@ -1,360 +1,275 @@
-import { useParams, Link } from "react-router-dom";
-import { ArrowLeft, Calendar, User, MessageCircle, Clock, Package, CheckCircle2, AlertCircle, XCircle } from "lucide-react";
+import { useEffect, useRef, useState, useCallback } from "react";
+import { useNavigate, useParams, Link } from "react-router-dom";
+import { ArrowLeft, Send, CheckCircle2, XCircle, Clock } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useAuth } from "@/contexts/AuthContext";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { formatPrice } from "@/lib/formatPrice";
-import { EntityChat } from "@/components/chat/EntityChat";
+import {
+  getOrderById,
+  getOrderMessages,
+  sendOrderMessage,
+  updateOrderStatus,
+  STATUS_LABELS,
+  STATUS_COLORS,
+  ITEM_TYPE_LABELS,
+  type OrderRecord,
+  type OrderMessage,
+} from "@/lib/orders";
+import { supabase } from "@/lib/supabase";
+import { formatDistanceToNow } from "date-fns";
+import { ru } from "date-fns/locale";
+import { toast } from "sonner";
 
 const OrderDetail = () => {
-  const { orderId } = useParams();
+  const { orderId } = useParams<{ orderId: string }>();
+  const { user, profile } = useAuth();
   const { safeAreaTopInset, isFullscreen } = useSettingsStore();
-  const isDemo = orderId === "demo";
+  const navigate = useNavigate();
 
-  // Mock order data
-  type OrderStatus = "pending" | "in_progress" | "review" | "completed" | "cancelled";
-  
-  type OrderType = "custom" | "ready_beat";
+  const [order, setOrder] = useState<OrderRecord | null>(null);
+  const [messages, setMessages] = useState<OrderMessage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [input, setInput] = useState("");
+  const [sending, setSending] = useState(false);
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  const demoOrder = {
-    id: "demo",
-    orderType: "custom" as OrderType,
-    service: "Демо-заказ (проверка чата)",
-    description: "Это демонстрационный заказ для проверки работы чата. Вы можете писать сообщения без авторизации.",
-    category: "Демо",
-    status: "in_progress" as OrderStatus,
-    createdAt: "Сейчас",
-    deadline: "—",
-    price: 0,
-    platformFee: 0,
-    total: 0,
-    client: { username: "you", name: "Вы", avatar: "", rating: 5 },
-    provider: { username: "soundlinker", name: "SoundLinker", avatar: "", rating: 5 },
-    fundsStatus: "none",
-    timeline: [
-      { status: "created", label: "Заказ создан", date: "Сейчас", completed: true },
-      { status: "payment", label: "Оплата получена", date: null, completed: false },
-      { status: "in_progress", label: "В работе", date: null, completed: false },
-      { status: "review", label: "На проверке", date: null, completed: false },
-      { status: "completed", label: "Завершено", date: null, completed: false },
-    ],
-  };
+  const loadMessages = useCallback(async () => {
+    if (!orderId) return;
+    const msgs = await getOrderMessages(orderId);
+    setMessages(msgs);
+  }, [orderId]);
 
-  const defaultOrder: {
-    id: number;
-    orderType: OrderType;
-    service: string;
-    description: string;
-    category: string;
-    status: OrderStatus;
-    createdAt: string;
-    deadline: string;
-    price: number;
-    platformFee: number;
-    total: number;
-    client: { username: string; name: string; avatar: string; rating: number };
-    provider: { username: string; name: string; avatar: string; rating: number };
-    fundsStatus: string;
-    timeline: Array<{ status: string; label: string; date: string | null; completed: boolean }>;
-    readyBeatTimeline?: Array<{ status: string; label: string; date: string | null; completed: boolean }>;
-  } = {
-    id: isDemo ? 0 : Number(orderId),
-    orderType: "custom",
-    service: "Trap бит production",
-    description: "Нужен trap бит в стиле Southside, с тяжелыми 808, crispy hi-hats и мрачной атмосферой. Желательно использовать синтезаторы типа Omnisphere. BPM около 140-145. Длительность 2:30-3:00 минуты. Нужен stems для дальнейшего сведения.",
-    category: "Битмейкинг",
-    status: "in_progress",
-    createdAt: "15 окт 2025, 14:30",
-    deadline: "18 окт 2025, 23:59",
-    price: 15000,
-    platformFee: 1500,
-    total: 16500,
-    client: {
-      username: "rapper_jay",
-      name: "Jay",
-      avatar: "",
-      rating: 4.8
-    },
-    provider: {
-      username: "trapmaster",
-      name: "TrapMaster",
-      avatar: "",
-      rating: 4.9
-    },
-    fundsStatus: "frozen",
-    timeline: [
-      { status: "created", label: "Заказ создан", date: "15 окт, 14:30", completed: true },
-      { status: "payment", label: "Оплата получена", date: "15 окт, 14:32", completed: true },
-      { status: "in_progress", label: "Работа начата", date: "15 окт, 18:00", completed: true },
-      { status: "review", label: "На проверке", date: null, completed: false },
-      { status: "completed", label: "Завершено", date: null, completed: false },
-    ],
-    readyBeatTimeline: [
-      { status: "transfer", label: "Оформлен перевод", date: null, completed: false },
-      { status: "buyer_confirm", label: "Покупатель подтвердил оплату", date: null, completed: false },
-      { status: "seller_confirm", label: "Продавец подтвердил получение", date: null, completed: false },
-      { status: "delivered", label: "Бит передан покупателю", date: null, completed: false },
-    ],
-  };
+  useEffect(() => {
+    if (!user) { navigate("/login"); return; }
+    if (!orderId) return;
 
-  const isReadyBeat = orderId === "ready-beat";
+    const init = async () => {
+      setLoading(true);
+      try {
+        const [o] = await Promise.all([getOrderById(orderId), loadMessages()]);
+        setOrder(o);
+      } finally {
+        setLoading(false);
+      }
+    };
+    void init();
+  }, [orderId, user, navigate, loadMessages]);
 
-  const readyBeatOrder = {
-    ...defaultOrder,
-    id: 0,
-    orderType: "ready_beat" as OrderType,
-    service: "Готовый бит — Dark Drill",
-    description: "Покупка готового бита. Сначала оформляется перевод, затем обе стороны подтверждают оплату/получение, после чего бит передаётся покупателю.",
-    category: "Готовый бит",
-    client: { username: "you", name: "Вы", avatar: "", rating: 5 },
-    provider: { username: "drillking", name: "DrillKing", avatar: "", rating: 4.9 },
-    price: 5000,
-    platformFee: 500,
-    total: 5500,
-    readyBeatTimeline: [
-      { status: "transfer", label: "Оформлен перевод", date: "16 окт, 10:00", completed: true },
-      { status: "buyer_confirm", label: "Покупатель подтвердил оплату", date: null, completed: false },
-      { status: "seller_confirm", label: "Продавец подтвердил получение", date: null, completed: false },
-      { status: "delivered", label: "Бит передан покупателю", date: null, completed: false },
-    ],
-  };
+  // Realtime
+  useEffect(() => {
+    if (!orderId) return;
+    const channel = supabase
+      .channel(`order-msgs-${orderId}`)
+      .on("postgres_changes", {
+        event: "INSERT",
+        schema: "public",
+        table: "order_messages",
+        filter: `order_id=eq.${orderId}`,
+      }, (payload) => {
+        const msg = payload.new as OrderMessage;
+        setMessages((prev) => prev.find((m) => m.id === msg.id) ? prev : [...prev, msg]);
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [orderId]);
 
-  const order = isDemo ? demoOrder : (isReadyBeat ? readyBeatOrder : defaultOrder);
-  const isClient = true; // Mock: current user is client
+  useEffect(() => {
+    scrollRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
-  const getStatusConfig = (status: string) => {
-    switch (status) {
-      case "pending":
-        return { label: "В ожидании", icon: Clock, color: "text-info", bgColor: "bg-info/10" };
-      case "in_progress":
-        return { label: "В работе", icon: Clock, color: "text-accent", bgColor: "bg-accent/10" };
-      case "review":
-        return { label: "На проверке", icon: AlertCircle, color: "text-primary", bgColor: "bg-primary/10" };
-      case "completed":
-        return { label: "Завершено", icon: CheckCircle2, color: "text-green-500", bgColor: "bg-green-500/10" };
-      case "cancelled":
-        return { label: "Отменено", icon: XCircle, color: "text-red-500", bgColor: "bg-red-500/10" };
-      default:
-        return { label: "Неизвестно", icon: Clock, color: "text-muted-foreground", bgColor: "bg-muted/10" };
+  const handleSend = async () => {
+    if (!input.trim() || sending || !user || !orderId) return;
+    const text = input.trim();
+    setInput("");
+    setSending(true);
+    try {
+      const msg = await sendOrderMessage(orderId, user.id, text);
+      msg.sender = { id: user.id, username: profile?.username ?? "", display_name: profile?.display_name ?? null, avatar_url: profile?.avatar_url ?? null };
+      setMessages((prev) => prev.find((m) => m.id === msg.id) ? prev : [...prev, msg]);
+    } catch {
+      setInput(text);
+      toast.error("Не удалось отправить");
+    } finally {
+      setSending(false);
     }
   };
 
-  const statusConfig = getStatusConfig(order.status);
-  const StatusIcon = statusConfig.icon;
-  const otherUser = isClient ? order.provider : order.client;
+  const handleStatus = async (status: "accepted" | "completed" | "cancelled") => {
+    if (!orderId) return;
+    try {
+      await updateOrderStatus(orderId, status);
+      setOrder((prev) => prev ? { ...prev, status } : prev);
+      toast.success(STATUS_LABELS[status]);
+    } catch {
+      toast.error("Ошибка");
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <p className="text-muted-foreground text-sm">Загрузка заказа...</p>
+      </div>
+    );
+  }
+
+  if (!order) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen gap-3">
+        <p className="font-semibold">Заказ не найден</p>
+        <Button variant="outline" onClick={() => navigate("/orders")}>К заказам</Button>
+      </div>
+    );
+  }
+
+  const isBuyer = user?.id === order.buyer_id;
+  const isSeller = user?.id === order.seller_id;
+  const partner = isBuyer ? order.seller : order.buyer;
+  const partnerName = partner?.display_name || partner?.username || "—";
 
   return (
-    <div className="min-h-screen pb-24 bg-background" style={{ paddingTop: isFullscreen ? `calc(1rem + ${safeAreaTopInset}px)` : '1rem' }}>
+    <div
+      className="flex flex-col h-screen max-w-lg mx-auto"
+      style={{ paddingTop: isFullscreen ? `${safeAreaTopInset}px` : "0" }}
+    >
       {/* Header */}
-      <div 
-        className="sticky z-50 bg-background/95 backdrop-blur border-b border-border" 
-        style={{ top: isFullscreen ? `${safeAreaTopInset}px` : '0' }}
-      >
-        <div className="max-w-3xl mx-auto px-3 h-14 flex items-center">
-          <Link to="/orders">
-            <Button variant="ghost" size="icon" className="rounded-full hover:bg-primary/10">
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-          </Link>
-          <h1 className="ml-2 font-semibold text-base">Детали заказа {isDemo ? "Демо" : `#${order.id}`}</h1>
-        </div>
+      <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-background/95 backdrop-blur-lg flex-shrink-0">
+        <Button variant="ghost" size="icon" onClick={() => navigate("/orders")}>
+          <ArrowLeft className="w-5 h-5" />
+        </Button>
+        <Link to={`/profile/${partner?.username}`} className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-1 min-w-0">
+          <Avatar className="w-9 h-9 flex-shrink-0">
+            <AvatarImage src={partner?.avatar_url ?? undefined} />
+            <AvatarFallback className="bg-primary/20 text-sm font-semibold">
+              {partnerName.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <p className="font-semibold text-sm truncate">{partnerName}</p>
+            <p className="text-xs text-muted-foreground">@{partner?.username}</p>
+          </div>
+        </Link>
+        <Badge className={`text-[11px] border flex-shrink-0 ${STATUS_COLORS[order.status]}`} variant="outline">
+          {STATUS_LABELS[order.status]}
+        </Badge>
       </div>
 
-      <div className="max-w-3xl mx-auto px-3 py-4 space-y-4">
-        {/* Status Card */}
-        <Card className="p-4">
-          <div className="flex items-start justify-between mb-3 gap-2">
-            <div className="flex-1 min-w-0">
-              <h2 className="text-xl font-bold mb-2 break-words">{order.service}</h2>
-              <Badge variant="outline" className="text-xs">{order.category}</Badge>
-            </div>
-            <div className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-full ${statusConfig.bgColor} shrink-0`}>
-              <StatusIcon className={`w-3.5 h-3.5 ${statusConfig.color}`} />
-              <span className={`text-xs font-medium ${statusConfig.color}`}>
-                {statusConfig.label}
+      {/* Order info */}
+      <div className="px-4 py-3 bg-muted/30 border-b border-border flex-shrink-0">
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2 mb-0.5">
+              <span className="text-xs text-muted-foreground uppercase tracking-wide">
+                {ITEM_TYPE_LABELS[order.item_type]}
               </span>
+              {order.license_name && (
+                <Badge variant="outline" className="text-[10px] h-4 px-1.5 border-primary/40 text-primary">
+                  {order.license_name}
+                </Badge>
+              )}
             </div>
-          </div>
-
-          <Separator className="my-3" />
-
-          {/* P2P Info */}
-          {order.fundsStatus !== "none" && (
-            <div className="bg-primary/10 border border-primary/20 rounded-lg p-3 mb-3">
-              <p className="text-xs font-medium flex items-center gap-2">
-                🤝 П2П: платформа — гарант сделки
-              </p>
-              <p className="text-[11px] text-muted-foreground mt-1">
-                Переводы напрямую между сторонами. Реквизиты в чате.
-              </p>
-            </div>
-          )}
-
-          {/* Description */}
-          <div className="mb-3">
-            <h3 className="font-semibold mb-2 flex items-center gap-2 text-sm">
-              <Package className="w-4 h-4" />
-              Описание задачи
-            </h3>
-            <p className="text-muted-foreground text-xs leading-relaxed break-words">
-              {order.description}
+            <p className="font-bold text-lg text-primary">
+              ₽{order.amount.toLocaleString("ru-RU")}
             </p>
           </div>
-
-          <Separator className="my-3" />
-
-          {/* Dates */}
-          <div className="grid grid-cols-2 gap-3 mb-3">
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Создан</p>
-              <p className="font-medium text-xs flex items-center gap-1.5">
-                <Calendar className="w-3.5 h-3.5" />
-                <span className="break-words">{order.createdAt}</span>
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground mb-1">Срок выполнения</p>
-              <p className="font-medium text-xs flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
-                <span className="break-words">{order.deadline}</span>
-              </p>
-            </div>
-          </div>
-
-          <Separator className="my-3" />
-
-          {/* Price Breakdown */}
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Стоимость услуги</span>
-              <span className="font-medium">{formatPrice(order.price)}</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-muted-foreground">Комиссия платформы (10%)</span>
-              <span className="font-medium">{formatPrice(order.platformFee)}</span>
-            </div>
-            <Separator />
-            <div className="flex justify-between pt-0.5">
-              <span className="font-semibold text-sm">Итого</span>
-              <span className="font-bold text-base text-primary">{formatPrice(order.total)}</span>
-            </div>
-          </div>
-        </Card>
-
-        {/* User Card */}
-        <Card className="p-4">
-          <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm">
-            <User className="w-4 h-4" />
-            {isClient ? "Исполнитель" : "Заказчик"}
-          </h3>
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5 min-w-0">
-              <Avatar className="w-11 h-11 shrink-0">
-                <AvatarImage src={otherUser.avatar} />
-                <AvatarFallback className="bg-gradient-primary text-white text-sm">
-                  {otherUser.name.slice(0, 2).toUpperCase()}
-                </AvatarFallback>
-              </Avatar>
-              <div className="min-w-0 flex-1">
-                <p className="font-semibold text-sm truncate">{otherUser.name}</p>
-                <p className="text-xs text-muted-foreground truncate">@{otherUser.username}</p>
-                <p className="text-xs text-muted-foreground">⭐ {otherUser.rating}</p>
-              </div>
-            </div>
-          </div>
-        </Card>
-
-        {/* Чат по заказу */}
-        <Card className="p-4">
-          <h3 className="font-semibold mb-3 flex items-center gap-2 text-sm">
-            <MessageCircle className="w-4 h-4" />
-            Чат по заказу
-          </h3>
-          <EntityChat entityType="order" entityId={orderId ?? ""} demo={orderId === "demo"} />
-        </Card>
-
-        {/* Timeline */}
-        <Card className="p-4">
-          <h3 className="font-semibold mb-3 text-sm">
-            {order.orderType === "ready_beat" ? "Этапы сделки (готовый бит)" : "История заказа"}
-          </h3>
-          <div className="space-y-3">
-            {(() => {
-              const timelineItems = order.orderType === "ready_beat" && order.readyBeatTimeline ? order.readyBeatTimeline : order.timeline;
-              return timelineItems.map((item, index) => (
-              <div key={item.status} className={`flex gap-2.5 relative ${item.date ? 'items-start' : 'items-center'}`}>
-                {/* Vertical line connecting timeline items */}
-                {index < timelineItems.length - 1 && (
-                  <div 
-                    className="absolute left-[13px] top-7 bottom-0 w-[2px] -mb-3"
-                    style={{ 
-                      background: timelineItems[index + 1].completed 
-                        ? 'hsl(var(--primary))' 
-                        : 'hsl(var(--border))'
-                    }}
-                  />
-                )}
-                
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 z-10 ${
-                  item.completed ? 'bg-primary/20' : 'bg-muted'
-                }`}>
-                  {item.completed ? (
-                    <CheckCircle2 className="w-3.5 h-3.5 text-primary" />
-                  ) : (
-                    <div className="w-1.5 h-1.5 rounded-full bg-muted-foreground" />
-                  )}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium text-xs ${!item.completed && 'text-muted-foreground'} break-words`}>
-                    {item.label}
-                  </p>
-                  {item.date && (
-                    <p className="text-[11px] text-muted-foreground">{item.date}</p>
-                  )}
-                </div>
-              </div>
-            ));
-            })()}
-          </div>
-        </Card>
-
-        {/* Actions */}
-        <div className="space-y-2.5">
-          {isClient && order.status === "review" && (
-            <>
-              <Button className="w-full h-11 bg-gradient-primary hover:shadow-neon text-sm">
-                <CheckCircle2 className="w-4 h-4 mr-2" />
-                Принять работу
+          <div className="flex gap-2">
+            {isSeller && order.status === "pending" && (
+              <>
+                <Button size="sm" variant="outline" className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                  onClick={() => void handleStatus("cancelled")}>
+                  <XCircle className="w-3.5 h-3.5 mr-1" />
+                  Отклонить
+                </Button>
+                <Button size="sm" onClick={() => void handleStatus("accepted")}>
+                  <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                  Принять
+                </Button>
+              </>
+            )}
+            {isSeller && order.status === "accepted" && (
+              <Button size="sm" onClick={() => void handleStatus("completed")}>
+                <CheckCircle2 className="w-3.5 h-3.5 mr-1" />
+                Завершить
               </Button>
-              <Button variant="outline" className="w-full h-11 text-sm">
-                Запросить доработку
+            )}
+            {isBuyer && order.status === "pending" && (
+              <Button size="sm" variant="outline" className="text-red-500 border-red-500/30 hover:bg-red-500/10"
+                onClick={() => void handleStatus("cancelled")}>
+                <XCircle className="w-3.5 h-3.5 mr-1" />
+                Отменить
               </Button>
-            </>
-          )}
-          
-          {!isClient && order.status === "pending" && (
-            <Button className="w-full h-11 bg-gradient-accent hover:shadow-accent text-sm">
-              Начать работу
-            </Button>
-          )}
-
-          {!isClient && order.status === "in_progress" && (
-            <Button className="w-full h-11 bg-gradient-primary hover:shadow-neon text-sm">
-              Отправить на проверку
-            </Button>
-          )}
-
-          {order.status === "pending" && (
-            <Button variant="outline" className="w-full h-11 border-destructive/30 hover:bg-destructive/10 text-destructive text-sm">
-              <XCircle className="w-4 h-4 mr-2" />
-              Отменить заказ
-            </Button>
-          )}
+            )}
+          </div>
         </div>
+        <p className="text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+          <Clock className="w-3 h-3" />
+          {formatDistanceToNow(new Date(order.created_at), { addSuffix: true, locale: ru })}
+        </p>
       </div>
+
+      <Separator />
+
+      {/* Messages */}
+      <ScrollArea className="flex-1 px-4 py-3">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <p className="text-muted-foreground text-sm">
+              {isBuyer
+                ? "Заказ отправлен. Напишите продавцу что-нибудь, чтобы начать."
+                : "Новый заказ! Ответьте покупателю."}
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {messages.map((msg) => {
+              const isOwn = msg.sender_id === user?.id;
+              const sName = msg.sender?.display_name || msg.sender?.username || "?";
+              return (
+                <div key={msg.id} className={`flex items-end gap-2 ${isOwn ? "flex-row-reverse" : ""}`}>
+                  {!isOwn && (
+                    <Avatar className="w-7 h-7 flex-shrink-0">
+                      <AvatarImage src={msg.sender?.avatar_url ?? undefined} />
+                      <AvatarFallback className="text-[10px] bg-primary/20">{sName.slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                  )}
+                  <div className={`max-w-[72%] group flex flex-col gap-0.5 ${isOwn ? "items-end" : "items-start"}`}>
+                    <div className={`rounded-2xl px-3.5 py-2 text-sm break-words ${isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm"}`}>
+                      {msg.text}
+                    </div>
+                    <span className="text-[10px] text-muted-foreground px-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {formatDistanceToNow(new Date(msg.created_at), { addSuffix: true, locale: ru })}
+                    </span>
+                  </div>
+                </div>
+              );
+            })}
+            <div ref={scrollRef} />
+          </div>
+        )}
+      </ScrollArea>
+
+      {/* Input */}
+      {order.status !== "cancelled" && order.status !== "completed" && (
+        <div className="px-4 py-3 border-t border-border bg-background flex-shrink-0">
+          <div className="flex gap-2 items-center">
+            <Input
+              placeholder="Сообщение..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void handleSend(); } }}
+              disabled={sending}
+            />
+            <Button size="icon" onClick={() => void handleSend()} disabled={sending || !input.trim()}>
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
